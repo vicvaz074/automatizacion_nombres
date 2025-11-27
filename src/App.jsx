@@ -184,8 +184,8 @@ function BadgeFace({ attendee, variant = 'front' }) {
   const adjustedGap = namesGap + (isBack ? 0.6 : 0)
   const adjustedOffset = namesOffset + (isBack ? 1.4 : 0)
   const adjustedWidth = Math.max(62, namesWidth - (isBack ? 2 : 0))
-  const topOffset = Math.max(15, adjustedOffset - 5.5)
-  const bottomOffset = Math.max(12, adjustedOffset - 8.5)
+  const topOffset = Math.max(12.5, adjustedOffset - 8.2)
+  const bottomOffset = Math.max(10, adjustedOffset - 12.2)
 
   const namesStyles = useMemo(
     () => ({
