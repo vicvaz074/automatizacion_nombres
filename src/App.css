@@ -223,7 +223,8 @@ button.ghost {
   text-align: center;
   display: grid;
   gap: var(--names-gap, 2.5mm);
-  width: 72mm;
+  width: 74mm;
+  max-width: 74mm;
   padding: 0 2mm;
   z-index: 1;
   text-wrap: balance;

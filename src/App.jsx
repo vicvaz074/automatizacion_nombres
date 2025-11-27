@@ -28,7 +28,7 @@ function getTypographyMetrics(fullName, company) {
   const normalizedCompany = normalizeValue(company) || 'Empresa'
 
   const baseNameSize = calculateFontSize(normalizedName, { baseSize: 27, minSize: 17, maxChars: 18 })
-  const baseCompanySize = calculateFontSize(normalizedCompany, { baseSize: 16, minSize: 11, maxChars: 22 })
+  const baseCompanySize = calculateFontSize(normalizedCompany, { baseSize: 16, minSize: 12, maxChars: 24 })
 
   const density = Math.max(
     normalizedName.length / 18,
@@ -39,9 +39,14 @@ function getTypographyMetrics(fullName, company) {
   const scale = density > 1 ? Math.max(0.72, 1 / density) : 1
 
   const nameFontSize = Math.max(17, Math.round(baseNameSize * scale * 10) / 10)
-  const companyFontSize = Math.max(11, Math.round(baseCompanySize * scale * 10) / 10)
 
-  const namesGap = nameFontSize > 24 ? 3.4 : nameFontSize > 20 ? 3.1 : 2.8
+  const companyScale = Math.min(0.78, Math.max(0.62, normalizedCompany.length / 28 || 0.68))
+  const balancedCompanySize = Math.round(nameFontSize * companyScale * 10) / 10
+  const companyFontSize = Math.max(12, Math.round(baseCompanySize * scale * 10) / 10, balancedCompanySize)
+
+  const estimatedNameLines = Math.max(1, Math.ceil(normalizedName.length / 16))
+  const namesGap =
+    estimatedNameLines >= 3 ? 4.8 : estimatedNameLines === 2 ? 4.1 : nameFontSize > 24 ? 3.6 : 3.2
 
   return { nameFontSize, companyFontSize, namesGap }
 }
