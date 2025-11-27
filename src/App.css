@@ -225,9 +225,11 @@ button.ghost {
   gap: var(--names-gap, 2.5mm);
   width: var(--names-width, 74mm);
   max-width: var(--names-width, 74mm);
-  padding: 0 2mm;
+  padding: 0;
   z-index: 1;
   text-wrap: balance;
+  justify-items: center;
+  align-items: center;
 }
 
 .names--mirrored {
