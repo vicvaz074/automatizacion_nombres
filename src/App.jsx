@@ -56,9 +56,11 @@ function getTypographyMetrics(fullName, company) {
   const nameWords = normalizedName.split(/\s+/).filter(Boolean)
   const wordCount = nameWords.length || 1
   const longestWord = nameWords.reduce((max, word) => Math.max(max, word.length), 0)
+  const companyWords = normalizedCompany.split(/\s+/).filter(Boolean)
+  const companyLongestWord = companyWords.reduce((max, word) => Math.max(max, word.length), 0)
 
   const baseNameSize = calculateFontSize(normalizedName, { baseSize: 27, minSize: 17, maxChars: 18 })
-  const baseCompanySize = calculateFontSize(normalizedCompany, { baseSize: 16, minSize: 12, maxChars: 24 })
+  const baseCompanySize = calculateFontSize(normalizedCompany, { baseSize: 16, minSize: 11.5, maxChars: 22 })
 
   const density = Math.max(
     normalizedName.length / 18,
@@ -69,7 +71,7 @@ function getTypographyMetrics(fullName, company) {
   const scale = density > 1 ? Math.max(0.72, 1 / density) : 1
 
   const estimatedNameLines = estimateLines(normalizedName, longestWord >= 12 ? 12 : 14)
-  const estimatedCompanyLines = estimateLines(normalizedCompany, 18)
+  const estimatedCompanyLines = estimateLines(normalizedCompany, Math.min(20, Math.max(16, 26 - companyLongestWord)))
 
   const crowdedNameScale = wordCount >= 3 ? 0.88 : longestWord >= 12 ? 0.93 : 1
   const extraWordsScale = wordCount >= 6 ? 0.78 : wordCount === 5 ? 0.85 : 1
@@ -80,25 +82,33 @@ function getTypographyMetrics(fullName, company) {
     Math.round(baseNameSize * scale * crowdedNameScale * multilineNameScale * extraWordsScale * longWordScale * 10) / 10
   )
 
-  const companyScale = Math.min(0.78, Math.max(0.62, normalizedCompany.length / 28 || 0.68))
+  const companyScale = Math.min(0.76, Math.max(0.6, normalizedCompany.length / 28 || 0.68))
   const balancedCompanySize = Math.round(nameFontSize * companyScale * 10) / 10
   const companyCrowdingScale = wordCount >= 3 || estimatedNameLines >= 2 ? 0.9 : 1
-  const nameToCompanyBalance = Math.min(nameFontSize * 0.82, Math.max(baseCompanySize * 0.95, balancedCompanySize))
+  const companyLongWordScale = companyLongestWord >= 16 ? 0.86 : companyLongestWord >= 12 ? 0.92 : 1
+  const companyMultilineScale =
+    estimatedCompanyLines >= 2 ? 0.9 - Math.min(0.16, (estimatedCompanyLines - 2) * 0.05) : 1
+  const nameToCompanyBalance = Math.min(
+    nameFontSize * 0.82,
+    Math.max(baseCompanySize * 0.92, balancedCompanySize * companyMultilineScale)
+  )
   const companyFontSize = Math.max(
-    12,
-    Math.round(baseCompanySize * scale * companyCrowdingScale * 10) / 10,
-    Math.round(balancedCompanySize * companyCrowdingScale * 10) / 10,
+    11,
+    Math.round(baseCompanySize * scale * companyCrowdingScale * companyLongWordScale * companyMultilineScale * 10) /
+      10,
+    Math.round(balancedCompanySize * companyCrowdingScale * companyLongWordScale * companyMultilineScale * 10) / 10,
     Math.round(nameToCompanyBalance * 10) / 10
   )
 
   const baseGap = nameFontSize >= 26 ? 5.8 : nameFontSize >= 22 ? 5.1 : 4.6
   const multilineGapBoost = estimatedNameLines > 1 ? 1.25 + (estimatedNameLines - 1) * 0.25 : 1
-  const companyLinesBoost = estimatedCompanyLines > 1 ? 1.12 : 1
+  const companyLinesBoost =
+    estimatedCompanyLines > 2 ? 1.2 + Math.min(0.18, (estimatedCompanyLines - 2) * 0.08) : estimatedCompanyLines > 1 ? 1.12 : 1
   const namesGap = Math.max(baseGap * multilineGapBoost * companyLinesBoost, 4.8)
 
   const baseOffset = 26
   const multilineOffsetBoost = estimatedNameLines > 1 ? Math.min(5, (estimatedNameLines - 1) * 2.2) : 0
-  const companyOffsetBoost = estimatedCompanyLines > 1 ? 1.2 : 0
+  const companyOffsetBoost = estimatedCompanyLines > 1 ? Math.min(3, (estimatedCompanyLines - 1) * 1.2) : 0
   const namesOffset = Math.max(20, baseOffset - multilineOffsetBoost - companyOffsetBoost)
 
   return { nameFontSize, companyFontSize, namesGap, namesOffset }
