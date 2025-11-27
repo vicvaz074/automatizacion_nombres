@@ -33,92 +33,21 @@ function buildAttendees(rows) {
 
 function BadgeFace({ attendee, variant = 'front' }) {
   const { fullName, company } = attendee
+  const templateSrc = variant === 'front' ? '/template-front.svg' : '/template-back.svg'
 
   return (
-    <section className={`badge ${variant}`}>
-      <div className="face-row face-row--top">
-        {variant === 'front' ? (
-          <>
-            <div className="logo logo-davara">
-              <span className="logo-davara__brand">davara</span>
-              <span className="logo-davara__role">ABOGADOS</span>
-            </div>
-            <div className="event-text">IX Jornada Anual de Actualización y Capacitación</div>
-            <div className="logo logo-tsuru">
-              <span className="logo-tsuru__icon">▦▦</span>
-              <span className="logo-tsuru__brand">Tsuru</span>
-              <span className="logo-tsuru__role">Aguayo · Rangel · Perez</span>
-            </div>
-          </>
-        ) : (
-          <>
-            <div className="logo logo-tsuru logo-tsuru--vertical">
-              <span className="logo-tsuru__icon">▦▦</span>
-              <span className="logo-tsuru__brand">Tsuru</span>
-              <span className="logo-tsuru__role">Aguayo · Rangel · Perez</span>
-            </div>
-            <div className="event-text event-text--center">IX Jornada Anual de Actualización y Capacitación</div>
-            <div className="logo logo-davara logo-davara--vertical">
-              <span className="logo-davara__brand">davara</span>
-              <span className="logo-davara__role">ABOGADOS</span>
-            </div>
-          </>
-        )}
+    <section className={`badge badge--${variant}`}>
+      <img className="badge__template" src={templateSrc} alt={`Plantilla ${variant}`} />
+
+      <div className="names" style={{ fontFamily: FUTURA_STACK }}>
+        <p className="name">{fullName || 'Nombre Apellido'}</p>
+        <p className="company">{company || 'Empresa'}</p>
       </div>
 
-      <div className="names">
-        <p className="name" style={{ fontFamily: FUTURA_STACK }}>
-          {fullName || 'Nombre Apellido'}
-        </p>
-        <p className="company" style={{ fontFamily: FUTURA_STACK }}>
-          {company || 'Empresa'}
-        </p>
+      <div className="names names--mirrored" style={{ fontFamily: FUTURA_STACK }}>
+        <p className="name">{fullName || 'Nombre Apellido'}</p>
+        <p className="company">{company || 'Empresa'}</p>
       </div>
-
-      <div className="names names--mirrored">
-        <p className="name" style={{ fontFamily: FUTURA_STACK }}>
-          {fullName || 'Nombre Apellido'}
-        </p>
-        <p className="company" style={{ fontFamily: FUTURA_STACK }}>
-          {company || 'Empresa'}
-        </p>
-      </div>
-
-      {variant === 'front' ? (
-        <div className="face-row face-row--bottom">
-          <div className="logo logo-tsuru logo-tsuru--mirrored">
-            <span className="logo-tsuru__icon">▦▦</span>
-            <span className="logo-tsuru__brand">Tsuru</span>
-            <span className="logo-tsuru__role">Aguayo · Rangel · Perez</span>
-          </div>
-          <div className="logo logo-davara logo-davara--mirrored">
-            <span className="logo-davara__brand">davara</span>
-            <span className="logo-davara__role">ABOGADOS</span>
-          </div>
-        </div>
-      ) : (
-        <div className="face-corners">
-          <div className="logo logo-davara logo-davara--corner logo-davara--rotated">
-            <span className="logo-davara__brand">davara</span>
-            <span className="logo-davara__role">ABOGADOS</span>
-          </div>
-          <div className="logo logo-tsuru logo-tsuru--corner logo-tsuru--rotated">
-            <span className="logo-tsuru__icon">▦▦</span>
-            <span className="logo-tsuru__brand">Tsuru</span>
-            <span className="logo-tsuru__role">Aguayo · Rangel · Perez</span>
-          </div>
-          <div className="logo logo-tsuru logo-tsuru--corner logo-tsuru--bottom">
-            <span className="logo-tsuru__icon">▦▦</span>
-            <span className="logo-tsuru__brand">Tsuru</span>
-            <span className="logo-tsuru__role">Aguayo · Rangel · Perez</span>
-          </div>
-          <div className="logo logo-davara logo-davara--corner logo-davara--bottom">
-            <span className="logo-davara__brand">davara</span>
-            <span className="logo-davara__role">ABOGADOS</span>
-          </div>
-          <div className="event-text event-text--mirrored">IX Jornada Anual de Actualización y Capacitación</div>
-        </div>
-      )}
     </section>
   )
 }
