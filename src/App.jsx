@@ -60,7 +60,8 @@ function getTypographyMetrics(fullName, company) {
   const companyLongestWord = companyWords.reduce((max, word) => Math.max(max, word.length), 0)
 
   const baseNameSize = calculateFontSize(normalizedName, { baseSize: 27, minSize: 17, maxChars: 18 })
-  const baseCompanySize = calculateFontSize(normalizedCompany, { baseSize: 16, minSize: 10.5, maxChars: 20 })
+  const baseCompanySize = calculateFontSize(normalizedCompany, { baseSize: 16.6, minSize: 10.4, maxChars: 18 })
+  const roomyCompanySize = calculateFontSize(normalizedCompany, { baseSize: 15.4, minSize: 10.8, maxChars: 24 })
 
   const density = Math.max(
     normalizedName.length / 18,
@@ -82,21 +83,26 @@ function getTypographyMetrics(fullName, company) {
     Math.round(baseNameSize * scale * crowdedNameScale * multilineNameScale * extraWordsScale * longWordScale * 10) / 10
   )
 
-  const companyScale = Math.min(0.72, Math.max(0.54, normalizedCompany.length / 26 || 0.68))
-  const balancedCompanySize = Math.round(nameFontSize * companyScale * 10) / 10
+  const companyDensity = normalizedCompany.length / 24
+  const companyScale = companyDensity > 1 ? Math.max(0.56, 1 - (companyDensity - 1) * 0.28) : 1 + (1 - companyDensity) * 0.08
+  const balancedCompanySize = Math.round(nameFontSize * 0.8 * 10) / 10
   const companyCrowdingScale = wordCount >= 3 || estimatedNameLines >= 2 ? 0.9 : 1
-  const companyLongWordScale = companyLongestWord >= 16 ? 0.84 : companyLongestWord >= 12 ? 0.9 : 1
+  const companyLongWordScale = companyLongestWord >= 18 ? 0.82 : companyLongestWord >= 14 ? 0.88 : companyLongestWord >= 12 ? 0.93 : 1
   const companyLengthScale =
-    normalizedCompany.length >= 40 ? 0.74 : normalizedCompany.length >= 32 ? 0.82 : normalizedCompany.length >= 28 ? 0.88 : 1
+    normalizedCompany.length >= 42
+      ? 0.72
+      : normalizedCompany.length >= 34
+        ? 0.8
+        : normalizedCompany.length >= 28
+          ? 0.88
+          : 1
   const companyMultilineScale =
-    estimatedCompanyLines >= 2 ? 0.88 - Math.min(0.18, (estimatedCompanyLines - 2) * 0.06) : 1
-  const shortCompanyBoost = normalizedCompany.length <= 8 && estimatedCompanyLines === 1 ? 1.08 : 1
-  const nameToCompanyBalance = Math.min(
-    nameFontSize * 0.82,
-    Math.max(baseCompanySize * 0.92, balancedCompanySize * companyMultilineScale * shortCompanyBoost)
-  )
+    estimatedCompanyLines >= 2 ? 0.9 - Math.min(0.18, (estimatedCompanyLines - 2) * 0.06) : 1
+  const shortCompanyBoost = normalizedCompany.length <= 8 && estimatedCompanyLines === 1 ? 1.16 : normalizedCompany.length <= 12 ? 1.08 : 1
+  const tinyWordBoost = companyLongestWord <= 6 && normalizedCompany.length <= 10 ? 1.1 : 1
+  const nameToCompanyBalance = Math.min(nameFontSize * 0.84, Math.max(baseCompanySize * 0.96, balancedCompanySize))
   const companyFontSize = Math.max(
-    10,
+    10.4,
     Math.round(
       baseCompanySize *
         scale *
@@ -105,10 +111,11 @@ function getTypographyMetrics(fullName, company) {
         companyLengthScale *
         companyMultilineScale *
         shortCompanyBoost *
+        tinyWordBoost *
         10
     ) / 10,
     Math.round(
-      balancedCompanySize *
+      roomyCompanySize *
         companyCrowdingScale *
         companyLongWordScale *
         companyLengthScale *
@@ -119,17 +126,22 @@ function getTypographyMetrics(fullName, company) {
     Math.round(nameToCompanyBalance * 10) / 10
   )
 
-  const baseGap = nameFontSize >= 26 ? 6.7 : nameFontSize >= 22 ? 6.2 : 5.8
-  const multilineGapBoost = estimatedNameLines > 1 ? 1.28 + (estimatedNameLines - 1) * 0.28 : 1
+  const baseGap = nameFontSize >= 26 ? 7.2 : nameFontSize >= 22 ? 6.7 : 6.1
+  const multilineGapBoost = estimatedNameLines > 1 ? 1.25 + (estimatedNameLines - 1) * 0.22 : 1
   const companyLinesBoost =
-    estimatedCompanyLines > 2 ? 1.32 + Math.min(0.24, (estimatedCompanyLines - 2) * 0.12) : estimatedCompanyLines > 1 ? 1.18 : 1
-  const companyLengthGapBoost = normalizedCompany.length >= 28 ? 1.16 : normalizedCompany.length >= 20 ? 1.08 : 1
-  const namesGap = Math.max(baseGap * multilineGapBoost * companyLinesBoost * companyLengthGapBoost, 5.8)
+    estimatedCompanyLines >= 3
+      ? 1.38
+      : estimatedCompanyLines === 2
+        ? 1.22
+        : 1
+  const companyLengthGapBoost = normalizedCompany.length >= 26 ? 1.14 : normalizedCompany.length >= 18 ? 1.08 : 1
+  const shortCompanyRelax = normalizedCompany.length <= 10 && estimatedCompanyLines === 1 ? 0.94 : 1
+  const namesGap = Math.max(baseGap * multilineGapBoost * companyLinesBoost * companyLengthGapBoost * shortCompanyRelax, 6.1)
 
-  const baseOffset = 26
-  const multilineOffsetBoost = estimatedNameLines > 1 ? Math.min(5, (estimatedNameLines - 1) * 2.2) : 0
-  const companyOffsetBoost = estimatedCompanyLines > 1 ? Math.min(3, (estimatedCompanyLines - 1) * 1.2) : 0
-  const namesOffset = Math.max(20, baseOffset - multilineOffsetBoost - companyOffsetBoost)
+  const baseOffset = 27.5
+  const multilineOffsetBoost = estimatedNameLines > 1 ? Math.min(5.4, (estimatedNameLines - 1) * 2.35) : 0
+  const companyOffsetBoost = estimatedCompanyLines > 1 ? Math.min(3.6, (estimatedCompanyLines - 1) * 1.35) : 0
+  const namesOffset = Math.max(21.5, baseOffset - multilineOffsetBoost - companyOffsetBoost)
 
   return { nameFontSize, companyFontSize, namesGap, namesOffset }
 }
@@ -160,15 +172,20 @@ function BadgeFace({ attendee, variant = 'front' }) {
     [company, fullName]
   )
 
+  const isBack = variant === 'back'
+  const adjustedGap = namesGap + (isBack ? 0.6 : 0)
+  const adjustedOffset = namesOffset + (isBack ? 1.4 : 0)
+
   const namesStyles = useMemo(
     () => ({
       fontFamily: FUTURA_STACK,
       '--name-size': `${nameFontSize}pt`,
       '--company-size': `${companyFontSize}pt`,
-      '--names-gap': `${namesGap}mm`,
-      '--names-offset': `${namesOffset}mm`,
+      '--names-gap': `${adjustedGap}mm`,
+      '--names-offset': `${adjustedOffset}mm`,
+      '--names-width': isBack ? '72mm' : '74mm',
     }),
-    [companyFontSize, nameFontSize, namesGap, namesOffset]
+    [adjustedGap, adjustedOffset, companyFontSize, isBack, nameFontSize]
   )
 
   return (
