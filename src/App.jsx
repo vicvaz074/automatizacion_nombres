@@ -143,7 +143,15 @@ function getTypographyMetrics(fullName, company) {
   const companyOffsetBoost = estimatedCompanyLines > 1 ? Math.min(3.6, (estimatedCompanyLines - 1) * 1.35) : 0
   const namesOffset = Math.max(21.5, baseOffset - multilineOffsetBoost - companyOffsetBoost)
 
-  return { nameFontSize, companyFontSize, namesGap, namesOffset }
+  const widthPenalty = Math.max(
+    0,
+    (normalizedCompany.length - 16) * 0.24,
+    (companyLongestWord - 10) * 0.72,
+    estimatedCompanyLines >= 2 ? 1.6 : 0
+  )
+  const namesWidth = Math.max(64, Math.round((74 - widthPenalty) * 10) / 10)
+
+  return { nameFontSize, companyFontSize, namesGap, namesOffset, namesWidth }
 }
 
 function buildAttendees(rows) {
@@ -167,14 +175,16 @@ function BadgeFace({ attendee, variant = 'front' }) {
   const { fullName, company } = attendee
   const templateSrc = variant === 'front' ? '/Plantilla_hoja_1.png' : '/Plantilla_hoja_2.png'
 
-  const { nameFontSize, companyFontSize, namesGap, namesOffset } = useMemo(
+  const { nameFontSize, companyFontSize, namesGap, namesOffset, namesWidth } = useMemo(
     () => getTypographyMetrics(fullName, company),
     [company, fullName]
   )
 
   const isBack = variant === 'back'
   const adjustedGap = namesGap + (isBack ? 0.6 : 0)
-  const adjustedOffset = namesOffset + (isBack ? 1.4 : 0)
+  const verticalBias = isBack ? 6.2 : -5.4
+  const adjustedOffset = Math.min(38, Math.max(14, namesOffset + verticalBias))
+  const adjustedWidth = Math.max(62, namesWidth - (isBack ? 2 : 0))
 
   const namesStyles = useMemo(
     () => ({
@@ -183,9 +193,9 @@ function BadgeFace({ attendee, variant = 'front' }) {
       '--company-size': `${companyFontSize}pt`,
       '--names-gap': `${adjustedGap}mm`,
       '--names-offset': `${adjustedOffset}mm`,
-      '--names-width': isBack ? '72mm' : '74mm',
+      '--names-width': `${adjustedWidth}mm`,
     }),
-    [adjustedGap, adjustedOffset, companyFontSize, isBack, nameFontSize]
+    [adjustedGap, adjustedOffset, adjustedWidth, companyFontSize, nameFontSize]
   )
 
   return (
