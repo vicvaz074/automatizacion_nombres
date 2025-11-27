@@ -219,7 +219,7 @@ button.ghost {
   position: absolute;
   left: 50%;
   transform: translateX(-50%);
-  top: var(--names-offset, 24mm);
+  top: var(--names-offset-top, var(--names-offset, 24mm));
   text-align: center;
   display: grid;
   gap: var(--names-gap, 2.5mm);
@@ -234,7 +234,7 @@ button.ghost {
 
 .names--mirrored {
   top: auto;
-  bottom: var(--names-offset, 24mm);
+  bottom: var(--names-offset-bottom, var(--names-offset, 24mm));
   transform: translateX(-50%) rotate(180deg);
 }
 
