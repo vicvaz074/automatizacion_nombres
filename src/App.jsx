@@ -27,6 +27,10 @@ function getTypographyMetrics(fullName, company) {
   const normalizedName = normalizeValue(fullName) || 'Nombre Apellido'
   const normalizedCompany = normalizeValue(company) || 'Empresa'
 
+  const nameWords = normalizedName.split(/\s+/).filter(Boolean)
+  const wordCount = nameWords.length || 1
+  const longestWord = nameWords.reduce((max, word) => Math.max(max, word.length), 0)
+
   const baseNameSize = calculateFontSize(normalizedName, { baseSize: 27, minSize: 17, maxChars: 18 })
   const baseCompanySize = calculateFontSize(normalizedCompany, { baseSize: 16, minSize: 12, maxChars: 24 })
 
@@ -38,15 +42,24 @@ function getTypographyMetrics(fullName, company) {
 
   const scale = density > 1 ? Math.max(0.72, 1 / density) : 1
 
-  const nameFontSize = Math.max(17, Math.round(baseNameSize * scale * 10) / 10)
+  const crowdedNameScale = wordCount >= 3 ? 0.9 : longestWord >= 12 ? 0.94 : 1
+  const nameFontSize = Math.max(16, Math.round(baseNameSize * scale * crowdedNameScale * 10) / 10)
 
   const companyScale = Math.min(0.78, Math.max(0.62, normalizedCompany.length / 28 || 0.68))
   const balancedCompanySize = Math.round(nameFontSize * companyScale * 10) / 10
-  const companyFontSize = Math.max(12, Math.round(baseCompanySize * scale * 10) / 10, balancedCompanySize)
+  const companyCrowdingScale = wordCount >= 3 ? 0.94 : 1
+  const companyFontSize = Math.max(
+    12,
+    Math.round(baseCompanySize * scale * companyCrowdingScale * 10) / 10,
+    Math.round(balancedCompanySize * companyCrowdingScale * 10) / 10
+  )
 
-  const estimatedNameLines = Math.max(1, Math.ceil(normalizedName.length / 16))
-  const namesGap =
-    estimatedNameLines >= 3 ? 4.8 : estimatedNameLines === 2 ? 4.1 : nameFontSize > 24 ? 3.6 : 3.2
+  const estimatedNameLines = Math.max(1, Math.ceil(normalizedName.length / 14))
+  const estimatedCompanyLines = Math.max(1, Math.ceil(normalizedCompany.length / 18))
+
+  const baseGap = nameFontSize >= 26 ? 5.4 : nameFontSize >= 22 ? 4.8 : 4.2
+  const linePressure = Math.min(1.45, (estimatedNameLines + estimatedCompanyLines) / 2)
+  const namesGap = Math.max(baseGap, 3.8 * linePressure)
 
   return { nameFontSize, companyFontSize, namesGap }
 }
