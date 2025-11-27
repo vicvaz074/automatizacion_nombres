@@ -219,16 +219,17 @@ button.ghost {
   position: absolute;
   left: 50%;
   transform: translateX(-50%);
-  top: 33mm;
+  top: 26mm;
   text-align: center;
   display: grid;
-  gap: 2.6mm;
+  gap: 3mm;
+  width: 78mm;
   z-index: 1;
 }
 
 .names--mirrored {
   top: auto;
-  bottom: 33mm;
+  bottom: 26mm;
   transform: translateX(-50%) rotate(180deg);
 }
 
