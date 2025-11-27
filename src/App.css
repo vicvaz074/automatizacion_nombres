@@ -1,0 +1,426 @@
+:root {
+  --bg: #f9fafb;
+  --ink: #111;
+  --muted: #4b5563;
+  --border: #e5e7eb;
+  --accent: #111827;
+  font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  background: var(--bg);
+  color: var(--ink);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+}
+
+.page {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 2rem 1.5rem 3rem;
+}
+
+.hero {
+  display: flex;
+  justify-content: space-between;
+  gap: 1.5rem;
+  align-items: flex-start;
+  padding: 1.5rem;
+  background: white;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  box-shadow: 0 10px 35px rgba(0, 0, 0, 0.04);
+}
+
+.hero h1 {
+  margin: 0.2rem 0 0.5rem;
+  font-size: 2.2rem;
+}
+
+.hero .lead {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+.eyebrow {
+  font-size: 0.9rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin: 0;
+}
+
+.actions {
+  display: grid;
+  gap: 0.5rem;
+  align-items: start;
+  justify-items: end;
+}
+
+.actions .helper {
+  color: var(--muted);
+  margin: 0;
+  font-size: 0.95rem;
+}
+
+.upload {
+  position: relative;
+  overflow: hidden;
+  border: 1px dashed var(--border);
+  background: #111827;
+  color: white;
+  padding: 0.85rem 1.4rem;
+  border-radius: 12px;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.upload input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+button {
+  border: 1px solid var(--border);
+  background: white;
+  border-radius: 12px;
+  padding: 0.75rem 1.4rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 120ms ease, box-shadow 120ms ease;
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+button:hover:not(:disabled),
+.upload:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
+}
+
+button.primary {
+  background: #111827;
+  color: white;
+  border-color: #111827;
+}
+
+button.ghost {
+  background: #f3f4f6;
+}
+
+.alert {
+  margin: 1rem 0;
+  background: #fff3ed;
+  color: #b45309;
+  border: 1px solid #fdba74;
+  padding: 0.75rem 1rem;
+  border-radius: 10px;
+}
+
+.status {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1rem;
+  margin: 1.25rem 0 1.5rem;
+}
+
+.status > div {
+  background: white;
+  border: 1px solid var(--border);
+  padding: 1rem 1.25rem;
+  border-radius: 12px;
+}
+
+.label {
+  text-transform: uppercase;
+  font-size: 0.85rem;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+  margin: 0 0 0.3rem;
+}
+
+.stat {
+  font-size: 1.8rem;
+}
+
+.pill {
+  display: inline-flex;
+  gap: 0.4rem;
+  background: #f3f4f6;
+  padding: 0.45rem 0.7rem;
+  border-radius: 999px;
+  color: var(--ink);
+}
+
+.preview {
+  background: white;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 1.5rem;
+  box-shadow: 0 10px 35px rgba(0, 0, 0, 0.04);
+}
+
+.preview-info h2 {
+  margin: 0;
+}
+
+.preview-info p {
+  color: var(--muted);
+}
+
+.empty {
+  background: #f3f4f6;
+  padding: 0.75rem 1rem;
+  border-radius: 12px;
+  color: var(--muted);
+}
+
+.badge-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1.5rem;
+}
+
+.badge-pair {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.badge {
+  position: relative;
+  width: 100mm;
+  height: 100mm;
+  background: white;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 18mm 12mm;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  overflow: hidden;
+  color: #000;
+}
+
+.face-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  align-items: center;
+  font-family: 'Futura', 'Futura PT', 'Century Gothic', 'Arial', sans-serif;
+}
+
+.face-row--top {
+  margin-bottom: 4mm;
+}
+
+.face-row--bottom {
+  margin-top: 4mm;
+}
+
+.logo {
+  text-transform: lowercase;
+  color: #000;
+  font-family: 'Futura', 'Futura PT', 'Century Gothic', 'Arial', sans-serif;
+}
+
+.logo-davara {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6mm;
+  justify-self: start;
+}
+
+.logo-davara__brand {
+  font-weight: 700;
+  letter-spacing: 0.06em;
+}
+
+.logo-davara__role {
+  font-size: 7pt;
+  letter-spacing: 0.2em;
+}
+
+.logo-tsuru {
+  display: flex;
+  flex-direction: column;
+  gap: 0.8mm;
+  align-items: flex-end;
+  justify-self: end;
+}
+
+.logo-tsuru__icon {
+  font-size: 11pt;
+  letter-spacing: -0.05em;
+}
+
+.logo-tsuru__brand {
+  font-weight: 700;
+  letter-spacing: 0.05em;
+}
+
+.logo-tsuru__role {
+  font-size: 7pt;
+  letter-spacing: 0.05em;
+}
+
+.logo-tsuru--vertical,
+.logo-davara--vertical {
+  align-self: start;
+}
+
+.event-text {
+  text-align: center;
+  font-family: 'Futura', 'Futura PT', 'Century Gothic', 'Arial', sans-serif;
+  font-size: 5.9pt;
+  font-weight: 400;
+  color: #000;
+}
+
+.event-text--center {
+  margin-bottom: 6mm;
+}
+
+.names {
+  text-align: center;
+  display: grid;
+  gap: 2.6mm;
+}
+
+.names--mirrored {
+  transform: rotate(180deg);
+}
+
+.name {
+  margin: 0;
+  font-size: 33.3pt;
+  font-weight: 700;
+  line-height: 1.05;
+}
+
+.company {
+  margin: 0;
+  font-size: 22.6pt;
+  font-weight: 700;
+}
+
+.face-row--bottom .logo {
+  justify-self: center;
+}
+
+.logo-tsuru--mirrored,
+.logo-davara--mirrored {
+  transform: rotate(180deg);
+  text-align: center;
+}
+
+.face-corners {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.logo-davara--corner,
+.logo-tsuru--corner {
+  position: absolute;
+  font-size: 9pt;
+}
+
+.logo-davara--rotated,
+.logo-tsuru--rotated {
+  transform: rotate(180deg);
+  top: 8mm;
+  left: 8mm;
+}
+
+.logo-tsuru--corner.logo-tsuru--rotated {
+  left: auto;
+  right: 8mm;
+}
+
+.logo-davara--bottom,
+.logo-tsuru--bottom {
+  bottom: 8mm;
+  left: 8mm;
+}
+
+.logo-tsuru--bottom {
+  left: auto;
+  right: 8mm;
+}
+
+.event-text--mirrored {
+  position: absolute;
+  bottom: 6mm;
+  left: 50%;
+  transform: translateX(-50%) rotate(180deg);
+  width: 100%;
+  text-align: center;
+}
+
+code {
+  background: #f3f4f6;
+  padding: 0.2rem 0.4rem;
+  border-radius: 6px;
+}
+
+@media print {
+  :root {
+    background: #fff;
+  }
+  body {
+    background: #fff;
+    margin: 0;
+  }
+  .page,
+  .hero,
+  .status,
+  .preview,
+  .badge-grid,
+  .badge-pair {
+    max-width: none;
+    padding: 0;
+    margin: 0;
+    box-shadow: none;
+    border: none;
+  }
+  .hero,
+  .status,
+  .preview-info,
+  .actions,
+  .empty,
+  .label,
+  .pill,
+  .lead,
+  .eyebrow,
+  .alert {
+    display: none !important;
+  }
+  .badge-grid {
+    display: block;
+  }
+  .badge-pair {
+    display: block;
+    page-break-after: auto;
+  }
+  .badge {
+    border: none;
+    margin: 0 auto;
+    page-break-after: always;
+  }
+  .badge:last-child {
+    page-break-after: auto;
+  }
+  @page {
+    size: 100mm 100mm;
+    margin: 0;
+  }
+}
