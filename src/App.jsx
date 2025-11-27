@@ -9,6 +9,15 @@ const demoRows = [
   { company: 'Tsuru', lastName: 'Aguayo', firstName: 'Diego' },
 ]
 
+function calculateFontSize(text, { baseSize, minSize, maxChars }) {
+  const length = normalizeValue(text).length
+  if (!length) return baseSize
+  if (length <= maxChars) return baseSize
+
+  const scaled = (maxChars / length) * baseSize
+  return Math.max(minSize, Math.round(scaled * 10) / 10)
+}
+
 function normalizeValue(value) {
   if (value === undefined || value === null) return ''
   return String(value).trim()
@@ -35,16 +44,36 @@ function BadgeFace({ attendee, variant = 'front' }) {
   const { fullName, company } = attendee
   const templateSrc = variant === 'front' ? '/Plantilla_hoja_1.png' : '/Plantilla_hoja_2.png'
 
+  const nameFontSize = useMemo(
+    () => calculateFontSize(fullName || 'Nombre Apellido', { baseSize: 28, minSize: 18, maxChars: 22 }),
+    [fullName]
+  )
+  const companyFontSize = useMemo(
+    () => calculateFontSize(company || 'Empresa', { baseSize: 18, minSize: 12, maxChars: 26 }),
+    [company]
+  )
+  const namesGap = useMemo(() => (nameFontSize + companyFontSize > 40 ? 2 : 2.5), [companyFontSize, nameFontSize])
+
+  const namesStyles = useMemo(
+    () => ({
+      fontFamily: FUTURA_STACK,
+      '--name-size': `${nameFontSize}pt`,
+      '--company-size': `${companyFontSize}pt`,
+      '--names-gap': `${namesGap}mm`,
+    }),
+    [companyFontSize, nameFontSize, namesGap]
+  )
+
   return (
     <section className={`badge badge--${variant}`}>
       <img className="badge__template" src={templateSrc} alt={`Plantilla ${variant}`} />
 
-      <div className="names" style={{ fontFamily: FUTURA_STACK }}>
+      <div className="names" style={namesStyles}>
         <p className="name">{fullName || 'Nombre Apellido'}</p>
         <p className="company">{company || 'Empresa'}</p>
       </div>
 
-      <div className="names names--mirrored" style={{ fontFamily: FUTURA_STACK }}>
+      <div className="names names--mirrored" style={namesStyles}>
         <p className="name">{fullName || 'Nombre Apellido'}</p>
         <p className="company">{company || 'Empresa'}</p>
       </div>

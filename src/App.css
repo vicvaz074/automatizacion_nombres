@@ -222,7 +222,7 @@ button.ghost {
   top: 26mm;
   text-align: center;
   display: grid;
-  gap: 2.5mm;
+  gap: var(--names-gap, 2.5mm);
   width: 72mm;
   padding: 0 2mm;
   z-index: 1;
@@ -237,7 +237,7 @@ button.ghost {
 
 .name {
   margin: 0;
-  font-size: 28pt;
+  font-size: var(--name-size, 28pt);
   font-weight: 700;
   line-height: 1.15;
   word-break: break-word;
@@ -245,7 +245,7 @@ button.ghost {
 
 .company {
   margin: 0;
-  font-size: 18pt;
+  font-size: var(--company-size, 18pt);
   font-weight: 700;
   line-height: 1.1;
   word-break: break-word;
