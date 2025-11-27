@@ -9,6 +9,11 @@ const demoRows = [
   { company: 'Tsuru', lastName: 'Aguayo', firstName: 'Diego' },
 ]
 
+function normalizeValue(value) {
+  if (value === undefined || value === null) return ''
+  return String(value).trim()
+}
+
 function calculateFontSize(text, { baseSize, minSize, maxChars }) {
   const length = normalizeValue(text).length
   if (!length) return baseSize
@@ -18,9 +23,27 @@ function calculateFontSize(text, { baseSize, minSize, maxChars }) {
   return Math.max(minSize, Math.round(scaled * 10) / 10)
 }
 
-function normalizeValue(value) {
-  if (value === undefined || value === null) return ''
-  return String(value).trim()
+function getTypographyMetrics(fullName, company) {
+  const normalizedName = normalizeValue(fullName) || 'Nombre Apellido'
+  const normalizedCompany = normalizeValue(company) || 'Empresa'
+
+  const baseNameSize = calculateFontSize(normalizedName, { baseSize: 27, minSize: 17, maxChars: 18 })
+  const baseCompanySize = calculateFontSize(normalizedCompany, { baseSize: 16, minSize: 11, maxChars: 22 })
+
+  const density = Math.max(
+    normalizedName.length / 18,
+    normalizedCompany.length / 22,
+    (normalizedName.length + normalizedCompany.length) / 40
+  )
+
+  const scale = density > 1 ? Math.max(0.72, 1 / density) : 1
+
+  const nameFontSize = Math.max(17, Math.round(baseNameSize * scale * 10) / 10)
+  const companyFontSize = Math.max(11, Math.round(baseCompanySize * scale * 10) / 10)
+
+  const namesGap = nameFontSize > 24 ? 3.4 : nameFontSize > 20 ? 3.1 : 2.8
+
+  return { nameFontSize, companyFontSize, namesGap }
 }
 
 function buildAttendees(rows) {
@@ -44,15 +67,10 @@ function BadgeFace({ attendee, variant = 'front' }) {
   const { fullName, company } = attendee
   const templateSrc = variant === 'front' ? '/Plantilla_hoja_1.png' : '/Plantilla_hoja_2.png'
 
-  const nameFontSize = useMemo(
-    () => calculateFontSize(fullName || 'Nombre Apellido', { baseSize: 28, minSize: 18, maxChars: 22 }),
-    [fullName]
+  const { nameFontSize, companyFontSize, namesGap } = useMemo(
+    () => getTypographyMetrics(fullName, company),
+    [company, fullName]
   )
-  const companyFontSize = useMemo(
-    () => calculateFontSize(company || 'Empresa', { baseSize: 18, minSize: 12, maxChars: 26 }),
-    [company]
-  )
-  const namesGap = useMemo(() => (nameFontSize + companyFontSize > 40 ? 2 : 2.5), [companyFontSize, nameFontSize])
 
   const namesStyles = useMemo(
     () => ({
@@ -164,8 +182,9 @@ function App() {
           <h2>Vista previa</h2>
           <p>
             Cada persona genera dos páginas: frente y reverso. La tipografía usa el stack{' '}
-            <code>{FUTURA_STACK}</code>, con tamaños: Nombre 33.3pt en negrita, Empresa 22.6pt en negrita y
-            la leyenda 5.9pt sin negrita.
+            <code>{FUTURA_STACK}</code> con un tamaño dinámico: el nombre parte de 27pt en negrita y la
+            empresa de 16pt en peso normal, ambos se ajustan automáticamente para que sigan siendo legibles
+            aunque el texto sea largo.
           </p>
         </div>
         {!attendees.length && <p className="empty">Sube tu Excel o usa el ejemplo para comenzar.</p>}

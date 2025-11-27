@@ -239,15 +239,15 @@ button.ghost {
   margin: 0;
   font-size: var(--name-size, 28pt);
   font-weight: 700;
-  line-height: 1.15;
+  line-height: 1.12;
   word-break: break-word;
 }
 
 .company {
   margin: 0;
   font-size: var(--company-size, 18pt);
-  font-weight: 700;
-  line-height: 1.1;
+  font-weight: 400;
+  line-height: 1.08;
   word-break: break-word;
 }
 
