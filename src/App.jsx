@@ -33,7 +33,7 @@ function buildAttendees(rows) {
 
 function BadgeFace({ attendee, variant = 'front' }) {
   const { fullName, company } = attendee
-  const templateSrc = variant === 'front' ? '/template-front.svg' : '/template-back.svg'
+  const templateSrc = variant === 'front' ? '/Plantilla_hoja_1.png' : '/Plantilla_hoja_2.png'
 
   return (
     <section className={`badge badge--${variant}`}>
