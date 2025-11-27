@@ -72,10 +72,12 @@ function getTypographyMetrics(fullName, company) {
   const estimatedCompanyLines = estimateLines(normalizedCompany, 18)
 
   const crowdedNameScale = wordCount >= 3 ? 0.88 : longestWord >= 12 ? 0.93 : 1
+  const extraWordsScale = wordCount >= 6 ? 0.78 : wordCount === 5 ? 0.85 : 1
+  const longWordScale = longestWord >= 14 ? 0.9 : 1
   const multilineNameScale = estimatedNameLines >= 2 ? 0.92 - Math.min(0.08, (estimatedNameLines - 2) * 0.04) : 1
   const nameFontSize = Math.max(
     15,
-    Math.round(baseNameSize * scale * crowdedNameScale * multilineNameScale * 10) / 10
+    Math.round(baseNameSize * scale * crowdedNameScale * multilineNameScale * extraWordsScale * longWordScale * 10) / 10
   )
 
   const companyScale = Math.min(0.78, Math.max(0.62, normalizedCompany.length / 28 || 0.68))
@@ -94,7 +96,12 @@ function getTypographyMetrics(fullName, company) {
   const companyLinesBoost = estimatedCompanyLines > 1 ? 1.12 : 1
   const namesGap = Math.max(baseGap * multilineGapBoost * companyLinesBoost, 4.8)
 
-  return { nameFontSize, companyFontSize, namesGap }
+  const baseOffset = 26
+  const multilineOffsetBoost = estimatedNameLines > 1 ? Math.min(5, (estimatedNameLines - 1) * 2.2) : 0
+  const companyOffsetBoost = estimatedCompanyLines > 1 ? 1.2 : 0
+  const namesOffset = Math.max(20, baseOffset - multilineOffsetBoost - companyOffsetBoost)
+
+  return { nameFontSize, companyFontSize, namesGap, namesOffset }
 }
 
 function buildAttendees(rows) {
@@ -118,7 +125,7 @@ function BadgeFace({ attendee, variant = 'front' }) {
   const { fullName, company } = attendee
   const templateSrc = variant === 'front' ? '/Plantilla_hoja_1.png' : '/Plantilla_hoja_2.png'
 
-  const { nameFontSize, companyFontSize, namesGap } = useMemo(
+  const { nameFontSize, companyFontSize, namesGap, namesOffset } = useMemo(
     () => getTypographyMetrics(fullName, company),
     [company, fullName]
   )
@@ -129,8 +136,9 @@ function BadgeFace({ attendee, variant = 'front' }) {
       '--name-size': `${nameFontSize}pt`,
       '--company-size': `${companyFontSize}pt`,
       '--names-gap': `${namesGap}mm`,
+      '--names-offset': `${namesOffset}mm`,
     }),
-    [companyFontSize, nameFontSize, namesGap]
+    [companyFontSize, nameFontSize, namesGap, namesOffset]
   )
 
   return (
