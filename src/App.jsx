@@ -6,14 +6,15 @@ import './App.css'
 
 const FUTURA_STACK = "'Futura', 'Futura PT', 'Century Gothic', 'Arial', sans-serif"
 
-const DEFAULT_TEMPLATE_PATH = encodeURI('/Plantilla 4 personas.png')
+const DEFAULT_TEMPLATE_PATH_FRONT = encodeURI('/Plantilla_hoja_1.png')
+const DEFAULT_TEMPLATE_PATH_BACK = encodeURI('/Plantilla_hoja_2.png')
 
 const TEMPLATE_OPTIONS = [
   {
     id: 'sheet-letter',
     label: 'Plantilla 4 personas (tamaño carta)',
-    front: DEFAULT_TEMPLATE_PATH,
-    back: DEFAULT_TEMPLATE_PATH,
+    front: DEFAULT_TEMPLATE_PATH_FRONT,
+    back: DEFAULT_TEMPLATE_PATH_BACK,
     layout: 'sheet',
   },
   {
