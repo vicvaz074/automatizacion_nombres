@@ -721,7 +721,9 @@ code {
     print-color-adjust: exact;
     border: none;
     box-shadow: none;
-    page-break-after: always;
+  }
+  .print-sheet:not(:last-of-type) {
+    break-after: page;
   }
   .print-sheet--back {
     transform: none;
