@@ -467,6 +467,10 @@ function App() {
         scale: 2.5,
         useCORS: true,
         backgroundColor: '#fff',
+        width: sheet.offsetWidth,
+        height: sheet.offsetHeight,
+        scrollX: 0,
+        scrollY: 0,
       })
       const imgData = canvas.toDataURL('image/png')
 

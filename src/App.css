@@ -453,6 +453,7 @@ button.ghost {
   width: var(--sheet-width);
   max-width: var(--sheet-width);
   height: var(--sheet-height);
+  box-sizing: border-box;
   padding: 12mm;
   background: white;
   border: 1px solid var(--border);
@@ -464,13 +465,14 @@ button.ghost {
   gap: 6mm;
   justify-items: center;
   align-items: center;
+  overflow: hidden;
 }
 
 .print-sheet--full-template {
   padding: 0;
   gap: 0;
-  background-position: center;
-  background-size: cover;
+  background-position: top left;
+  background-size: 100% 100%;
   background-repeat: no-repeat;
   image-rendering: optimizeQuality;
 }
