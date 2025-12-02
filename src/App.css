@@ -451,7 +451,7 @@ button.ghost {
   --sheet-height: 279.4mm;
   position: relative;
   width: var(--sheet-width);
-  max-width: 100%;
+  max-width: var(--sheet-width);
   height: var(--sheet-height);
   padding: 12mm;
   background: white;
@@ -470,7 +470,7 @@ button.ghost {
   padding: 0;
   gap: 0;
   background-position: center;
-  background-size: 100% 100%;
+  background-size: contain;
   background-repeat: no-repeat;
 }
 
