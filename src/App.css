@@ -450,9 +450,9 @@ button.ghost {
   --sheet-width: 215.9mm;
   --sheet-height: 279.4mm;
   position: relative;
-  width: min(100%, var(--sheet-width));
-  height: auto;
-  aspect-ratio: 215.9 / 279.4;
+  width: var(--sheet-width);
+  max-width: 100%;
+  height: var(--sheet-height);
   padding: 12mm;
   background: white;
   border: 1px solid var(--border);
@@ -470,7 +470,7 @@ button.ghost {
   padding: 0;
   gap: 0;
   background-position: center;
-  background-size: cover;
+  background-size: 100% 100%;
   background-repeat: no-repeat;
 }
 
