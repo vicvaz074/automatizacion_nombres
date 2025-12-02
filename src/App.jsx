@@ -5,8 +5,9 @@ import jsPDF from 'jspdf'
 import './App.css'
 
 const FUTURA_STACK = "'Futura', 'Futura PT', 'Century Gothic', 'Arial', sans-serif"
-const DEFAULT_TEMPLATE_PATH_FRONT = encodeURI('/Plantilla_hoja_1.png')
-const DEFAULT_TEMPLATE_PATH_BACK = encodeURI('/Plantilla_hoja_2.png')
+const DEFAULT_TEMPLATE_PATH = encodeURI('/Plantilla_4_personas.png')
+const DEFAULT_TEMPLATE_PATH_FRONT = DEFAULT_TEMPLATE_PATH
+const DEFAULT_TEMPLATE_PATH_BACK = DEFAULT_TEMPLATE_PATH
 
 const TEMPLATE_OPTIONS = [
   {
