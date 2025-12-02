@@ -206,8 +206,7 @@ function buildNameStyles(attendee, isBack, positionAdjustments, fontScale = 1) {
   const adjustedGap = namesGap + positionAdjustments.gap
   const adjustedOffset = namesOffset + positionAdjustments.vertical + (isBack ? 1.4 : 0)
   const adjustedWidth = Math.max(50, namesWidth + positionAdjustments.width - (isBack ? 2 : 0))
-  const topOffset = Math.max(12.5, adjustedOffset - 8.2)
-  const bottomOffset = Math.max(10, adjustedOffset - 12.2)
+  const mirroredOffset = Math.max(12.5, adjustedOffset - 9.8)
   const safeScale = Math.min(Math.max(fontScale, 0.6), 1.6)
   const scaledNameSize = Math.round(nameFontSize * safeScale * 10) / 10
   const scaledCompanySize = Math.round(companyFontSize * safeScale * 10) / 10
@@ -218,8 +217,8 @@ function buildNameStyles(attendee, isBack, positionAdjustments, fontScale = 1) {
     '--company-size': `${scaledCompanySize}pt`,
     '--names-gap': `${adjustedGap}mm`,
     '--names-offset': `${adjustedOffset}mm`,
-    '--names-offset-top': `${topOffset}mm`,
-    '--names-offset-bottom': `${bottomOffset}mm`,
+    '--names-offset-top': `${mirroredOffset}mm`,
+    '--names-offset-bottom': `${mirroredOffset}mm`,
     '--names-width': `${adjustedWidth}mm`,
     '--names-horizontal': `${positionAdjustments.horizontal}mm`,
   }
@@ -227,6 +226,7 @@ function buildNameStyles(attendee, isBack, positionAdjustments, fontScale = 1) {
 
 function BadgeFace({ attendees, variant = 'front', template, layoutMode, positionAdjustments, fontScale }) {
   const isBack = variant === 'back'
+  const isPairedLayout = layoutMode === 'paired'
   const templateSrc = isBack ? template.back : template.front
   const [first, second] = attendees
   const baseScale = isBack ? fontScale.back : fontScale.front
@@ -240,7 +240,7 @@ function BadgeFace({ attendees, variant = 'front', template, layoutMode, positio
   const isMirrorLayout = layoutMode === 'mirror'
 
   return (
-    <section className={`badge badge--${variant}`}>
+    <section className={`badge badge--${variant} badge--layout-${layoutMode}`}>
       {templateSrc ? (
         <img className="badge__template" src={templateSrc} alt={`Plantilla ${variant}`} />
       ) : (
@@ -267,7 +267,7 @@ function BadgeFace({ attendees, variant = 'front', template, layoutMode, positio
           </div>
 
           {second && (
-            <div className="names names--bottom" style={secondaryStyles}>
+            <div className={`names names--bottom ${isPairedLayout ? 'names--mirrored' : ''}`} style={secondaryStyles}>
               <p className="name">{second.fullName || 'Nombre Apellido'}</p>
               <p className="company">{second.company || 'Empresa'}</p>
             </div>
@@ -720,8 +720,8 @@ function App() {
           <h2>Vista previa</h2>
           <p>
             Ajusta los deslizadores hasta que el texto caiga en el lugar exacto de tu plantilla. En modo espejo la parte
-            inferior rota 180° para que coincida al imprimir y doblar; en modo doble se incluyen dos nombres por hoja y
-            la siguiente página repite el par para que imprimas a doble cara.
+            inferior rota 180° para que coincida al imprimir y doblar; en modo doble se incluyen dos nombres por hoja,
+            se espejan para mantener la orientación y la siguiente página repite el par para que imprimas a doble cara.
           </p>
         </div>
         {!attendees.length && <p className="empty">Sube tu Excel o usa el ejemplo para comenzar.</p>}
