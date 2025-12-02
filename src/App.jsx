@@ -8,22 +8,10 @@ const FUTURA_STACK = "'Futura', 'Futura PT', 'Century Gothic', 'Arial', sans-ser
 
 const TEMPLATE_OPTIONS = [
   {
-    id: 'sheet-one',
-    label: 'Plantilla hoja 1 (frente y reverso)',
-    front: '/Plantilla_hoja_1.png',
-    back: '/Plantilla_hoja_1.png',
-  },
-  {
-    id: 'sheet-two',
-    label: 'Plantilla hoja 2 (frente y reverso)',
-    front: '/Plantilla_hoja_2.png',
-    back: '/Plantilla_hoja_2.png',
-  },
-  {
-    id: 'mixed',
-    label: 'Combinado: hoja 1 al frente · hoja 2 al reverso',
-    front: '/Plantilla_hoja_1.png',
-    back: '/Plantilla_hoja_2.png',
+    id: 'sheet-letter',
+    label: 'Plantilla 4 personas (tamaño carta)',
+    front: '/Plantilla 4 personas.png',
+    back: '/Plantilla 4 personas.png',
   },
   {
     id: 'custom',
@@ -224,56 +212,26 @@ function buildNameStyles(attendee, isBack, positionAdjustments, fontScale = 1) {
   }
 }
 
-function BadgeFace({ attendees, variant = 'front', template, layoutMode, positionAdjustments, fontScale }) {
+function BadgeFace({ attendees, variant = 'front', template, positionAdjustments, fontScale }) {
   const isBack = variant === 'back'
-  const isPairedLayout = layoutMode === 'paired'
   const templateSrc = isBack ? template.back : template.front
-  const [first, second] = attendees
+  const [first] = attendees
   const baseScale = isBack ? fontScale.back : fontScale.front
   const primaryScale = baseScale * (isBack ? first.fontScaleBack ?? 1 : first.fontScaleFront ?? 1)
-  const secondaryScale =
-    baseScale * (isBack ? second?.fontScaleBack ?? 1 : second?.fontScaleFront ?? 1)
   const primaryStyles = buildNameStyles(first, isBack, positionAdjustments, primaryScale)
-  const secondaryStyles = second
-    ? buildNameStyles(second, isBack, positionAdjustments, secondaryScale)
-    : primaryStyles
-  const isMirrorLayout = layoutMode === 'mirror'
 
   return (
-    <section className={`badge badge--${variant} badge--layout-${layoutMode}`}>
+    <section className={`badge badge--${variant}`}>
       {templateSrc ? (
         <img className="badge__template" src={templateSrc} alt={`Plantilla ${variant}`} />
       ) : (
         <div className="badge__template badge__template--placeholder">Sube tu plantilla de {variant === 'front' ? 'frente' : 'reverso'}</div>
       )}
 
-      {isMirrorLayout ? (
-        <>
-          <div className="names" style={primaryStyles}>
-            <p className="name">{first.fullName || 'Nombre Apellido'}</p>
-            <p className="company">{first.company || 'Empresa'}</p>
-          </div>
-
-          <div className="names names--mirrored" style={primaryStyles}>
-            <p className="name">{first.fullName || 'Nombre Apellido'}</p>
-            <p className="company">{first.company || 'Empresa'}</p>
-          </div>
-        </>
-      ) : (
-        <>
-          <div className="names names--top" style={primaryStyles}>
-            <p className="name">{first.fullName || 'Nombre Apellido'}</p>
-            <p className="company">{first.company || 'Empresa'}</p>
-          </div>
-
-          {second && (
-            <div className={`names names--bottom ${isPairedLayout ? 'names--mirrored' : ''}`} style={secondaryStyles}>
-              <p className="name">{second.fullName || 'Nombre Apellido'}</p>
-              <p className="company">{second.company || 'Empresa'}</p>
-            </div>
-          )}
-        </>
-      )}
+      <div className="names" style={primaryStyles}>
+        <p className="name">{first.fullName || 'Nombre Apellido'}</p>
+        <p className="company">{first.company || 'Empresa'}</p>
+      </div>
     </section>
   )
 }
@@ -290,7 +248,6 @@ function PrintSheet({
   sheet,
   variant,
   template,
-  layoutMode,
   positionAdjustments,
   fontScale,
   index,
@@ -309,7 +266,6 @@ function PrintSheet({
               attendees={group}
               variant={variant}
               template={template}
-              layoutMode={layoutMode}
               positionAdjustments={positionAdjustments}
               fontScale={fontScale}
             />
@@ -327,7 +283,6 @@ function App() {
   const [error, setError] = useState('')
   const [templateId, setTemplateId] = useState(TEMPLATE_OPTIONS[0].id)
   const [customTemplate, setCustomTemplate] = useState({ front: '', back: '' })
-  const [layoutMode, setLayoutMode] = useState('mirror')
   const [positionAdjustments, setPositionAdjustments] = useState({ vertical: 0, gap: 0, width: 0, horizontal: 0 })
   const [fontScale, setFontScale] = useState({ front: 1, back: 1 })
   const [attendeeOverrides, setAttendeeOverrides] = useState({})
@@ -467,15 +422,7 @@ function App() {
       .slice(0, 8)
   }, [quickSearch, suggestionCatalog])
 
-  const badgeGroups = useMemo(() => {
-    if (layoutMode === 'mirror') return decoratedAttendees.map((attendee) => [attendee])
-
-    const groups = []
-    for (let i = 0; i < decoratedAttendees.length; i += 2) {
-      groups.push(decoratedAttendees.slice(i, i + 2))
-    }
-    return groups
-  }, [decoratedAttendees, layoutMode])
+  const badgeGroups = useMemo(() => decoratedAttendees.map((attendee) => [attendee]), [decoratedAttendees])
 
   const sheets = useMemo(() => chunkIntoSheets(badgeGroups), [badgeGroups])
   const totalSheets = useMemo(() => sheets.length, [sheets])
@@ -487,15 +434,10 @@ function App() {
   const editingPositionLabel = decoratedAttendees.length ? `#${editingIndex + 1} de ${decoratedAttendees.length}` : 'Sin selección'
   const isPersonCustomized = Boolean(attendeeOverrides[editingIndex])
 
-  const activeBadgeGroup = useMemo(() => {
-    if (!decoratedAttendees.length) return []
-    if (layoutMode === 'mirror') {
-      return [decoratedAttendees[editingIndex] || decoratedAttendees[0]]
-    }
-
-    const groupIndex = Math.floor(editingIndex / 2)
-    return badgeGroups[groupIndex] || decoratedAttendees.slice(groupIndex * 2, groupIndex * 2 + 2)
-  }, [badgeGroups, decoratedAttendees, editingIndex, layoutMode])
+  const activeBadgeGroup = useMemo(
+    () => (decoratedAttendees.length ? [decoratedAttendees[editingIndex] || decoratedAttendees[0]] : []),
+    [decoratedAttendees, editingIndex]
+  )
 
   const handleDownloadPDF = async () => {
     if (!badgeGroups.length || missingCustomTemplate) return
@@ -563,9 +505,9 @@ function App() {
           <p className="eyebrow">Plantilla carta · 4 gafetes por hoja · Impresión a doble cara</p>
           <h1>Generador de gafetes</h1>
           <p className="lead">
-            Elige una plantilla, sube un Excel con las columnas <strong>Empresa</strong>, <strong>Apellido</strong> y{' '}
-            <strong>Nombre</strong> y personaliza la posición del texto. Ahora cada hoja carta acomoda cuatro gafetes en
-            espejo y listos para impresión a doble cara sin desperdiciar papel.
+            Elige la plantilla carta de cuatro espacios o carga tu diseño, sube un Excel con las columnas <strong>Empresa</strong>,{' '}
+            <strong>Apellido</strong> y <strong>Nombre</strong> y personaliza la posición del texto. La hoja carta ya está dividida en
+            cuatro zonas listas para imprimir frente y reverso sin ajustes adicionales.
           </p>
         </div>
         <div className="actions">
@@ -617,32 +559,6 @@ function App() {
             )}
 
             {missingCustomTemplate && <p className="helper warning">Sube frente y reverso para usar tu plantilla personalizada.</p>}
-          </div>
-        </div>
-
-        <div>
-          <p className="panel__title">Modo de distribución</p>
-          <div className="controls controls--inline">
-            <label className="pill-option">
-              <input
-                type="radio"
-                name="layout"
-                value="mirror"
-                checked={layoutMode === 'mirror'}
-                onChange={(event) => setLayoutMode(event.target.value)}
-              />
-              <span>Nombre en espejo (1 por hoja)</span>
-            </label>
-            <label className="pill-option">
-              <input
-                type="radio"
-                name="layout"
-                value="paired"
-                checked={layoutMode === 'paired'}
-                onChange={(event) => setLayoutMode(event.target.value)}
-              />
-              <span>Dos nombres por hoja</span>
-            </label>
           </div>
         </div>
 
@@ -910,7 +826,7 @@ function App() {
                   <p className="person-preview__label">
                     Vista previa en vivo de <strong>{editingPerson?.fullName || 'la persona seleccionada'}</strong>
                   </p>
-                  <div className="pill pill--neutral">{layoutMode === 'mirror' ? 'Modo espejo' : 'Modo doble'}</div>
+                  <div className="pill pill--neutral">Plantilla carta · 4 gafetes</div>
                 </div>
                 <p className="helper">Observa cómo se verá cada lado sin salir de la edición individual.</p>
               <div className="badge-pair badge-pair--compact">
@@ -920,7 +836,6 @@ function App() {
                       sheet={activeSheet}
                       variant="front"
                       template={activeTemplate}
-                      layoutMode={layoutMode}
                       positionAdjustments={positionAdjustments}
                       fontScale={fontScale}
                       index={activeSheetIndex}
@@ -932,7 +847,6 @@ function App() {
                       sheet={activeSheet}
                       variant="back"
                       template={activeTemplate}
-                      layoutMode={layoutMode}
                       positionAdjustments={positionAdjustments}
                       fontScale={fontScale}
                       index={activeSheetIndex}
@@ -969,7 +883,7 @@ function App() {
           <h2>Vista previa</h2>
           <p>
             Ajusta los deslizadores hasta que el texto caiga en el lugar exacto de tu plantilla. Cada hoja carta acomoda
-            4 gafetes simétricos y en espejo: la cara posterior rota el lienzo para alinearse al imprimir a doble cara.
+            4 gafetes simétricos listos para imprimir frente y reverso con la misma orientación.
           </p>
         </div>
         {!attendees.length && <p className="empty">Sube tu Excel o usa el ejemplo para comenzar.</p>}
@@ -981,7 +895,6 @@ function App() {
                 sheet={sheet}
                 variant="front"
                 template={activeTemplate}
-                layoutMode={layoutMode}
                 positionAdjustments={positionAdjustments}
                 fontScale={fontScale}
                 index={index}
@@ -990,7 +903,6 @@ function App() {
                 sheet={sheet}
                 variant="back"
                 template={activeTemplate}
-                layoutMode={layoutMode}
                 positionAdjustments={positionAdjustments}
                 fontScale={fontScale}
                 index={index}
