@@ -415,6 +415,16 @@ function App() {
   const totalSheets = useMemo(() => badgeGroups.length, [badgeGroups])
   const totalPeople = useMemo(() => decoratedAttendees.length, [decoratedAttendees])
 
+  const activeBadgeGroup = useMemo(() => {
+    if (!decoratedAttendees.length) return []
+    if (layoutMode === 'mirror') {
+      return [decoratedAttendees[editingIndex] || decoratedAttendees[0]]
+    }
+
+    const groupIndex = Math.floor(editingIndex / 2)
+    return badgeGroups[groupIndex] || decoratedAttendees.slice(groupIndex * 2, groupIndex * 2 + 2)
+  }, [badgeGroups, decoratedAttendees, editingIndex, layoutMode])
+
   const handleDownloadPDF = async () => {
     if (!badgeGroups.length || missingCustomTemplate) return
     setIsExporting(true)
@@ -620,7 +630,7 @@ function App() {
             <p className="panel__title">Edición individual</p>
             <p className="helper">
               Ajusta un nombre o empresa de manera puntual y controla el tamaño de letra de cada hoja (frente y reverso)
-              sin afectar a los demás.
+              sin afectar a los demás. Usa los botones para recorrer rápidamente la lista y ver una vista previa al lado.
             </p>
           </div>
           <div className="controls controls--inline">
@@ -639,6 +649,32 @@ function App() {
                 ))}
               </select>
             </label>
+            <div className="inline-actions">
+              <button
+                type="button"
+                className="ghost"
+                disabled={!decoratedAttendees.length}
+                onClick={() =>
+                  setEditingIndex((prev) =>
+                    decoratedAttendees.length ? (prev - 1 + decoratedAttendees.length) % decoratedAttendees.length : prev
+                  )
+                }
+              >
+                ← Anterior
+              </button>
+              <button
+                type="button"
+                className="ghost"
+                disabled={!decoratedAttendees.length}
+                onClick={() =>
+                  setEditingIndex((prev) =>
+                    decoratedAttendees.length ? (prev + 1) % decoratedAttendees.length : prev
+                  )
+                }
+              >
+                Siguiente →
+              </button>
+            </div>
             <button
               type="button"
               className="ghost"
@@ -651,47 +687,74 @@ function App() {
         </div>
 
         {decoratedAttendees.length > 0 ? (
-          <div className="editor-grid">
-            <label className="control">
-              <span>Nombre a mostrar</span>
-              <input
-                type="text"
-                value={attendeeOverrides[editingIndex]?.name ?? attendees[editingIndex]?.fullName ?? ''}
-                onChange={(event) => updateAttendeeOverride(editingIndex, 'name', event.target.value)}
-              />
-            </label>
-            <label className="control">
-              <span>Empresa a mostrar</span>
-              <input
-                type="text"
-                value={attendeeOverrides[editingIndex]?.company ?? attendees[editingIndex]?.company ?? ''}
-                onChange={(event) => updateAttendeeOverride(editingIndex, 'company', event.target.value)}
-              />
-            </label>
-            <label className="control">
-              <span>Tamaño solo para hoja 1 (frente)</span>
-              <input
-                type="range"
-                min="0.6"
-                max="1.6"
-                step="0.05"
-                value={attendeeOverrides[editingIndex]?.fontScaleFront ?? 1}
-                onChange={(event) => updateAttendeeOverride(editingIndex, 'fontScaleFront', Number(event.target.value))}
-              />
-              <span className="control__value">{Math.round((attendeeOverrides[editingIndex]?.fontScaleFront ?? 1) * 100)}%</span>
-            </label>
-            <label className="control">
-              <span>Tamaño solo para hoja 2 (reverso)</span>
-              <input
-                type="range"
-                min="0.6"
-                max="1.6"
-                step="0.05"
-                value={attendeeOverrides[editingIndex]?.fontScaleBack ?? 1}
-                onChange={(event) => updateAttendeeOverride(editingIndex, 'fontScaleBack', Number(event.target.value))}
-              />
-              <span className="control__value">{Math.round((attendeeOverrides[editingIndex]?.fontScaleBack ?? 1) * 100)}%</span>
-            </label>
+          <div className="individual-editor">
+            <div className="editor-grid">
+              <label className="control">
+                <span>Nombre a mostrar</span>
+                <input
+                  type="text"
+                  value={attendeeOverrides[editingIndex]?.name ?? attendees[editingIndex]?.fullName ?? ''}
+                  onChange={(event) => updateAttendeeOverride(editingIndex, 'name', event.target.value)}
+                />
+              </label>
+              <label className="control">
+                <span>Empresa a mostrar</span>
+                <input
+                  type="text"
+                  value={attendeeOverrides[editingIndex]?.company ?? attendees[editingIndex]?.company ?? ''}
+                  onChange={(event) => updateAttendeeOverride(editingIndex, 'company', event.target.value)}
+                />
+              </label>
+              <label className="control">
+                <span>Tamaño solo para hoja 1 (frente)</span>
+                <input
+                  type="range"
+                  min="0.6"
+                  max="1.6"
+                  step="0.05"
+                  value={attendeeOverrides[editingIndex]?.fontScaleFront ?? 1}
+                  onChange={(event) => updateAttendeeOverride(editingIndex, 'fontScaleFront', Number(event.target.value))}
+                />
+                <span className="control__value">{Math.round((attendeeOverrides[editingIndex]?.fontScaleFront ?? 1) * 100)}%</span>
+              </label>
+              <label className="control">
+                <span>Tamaño solo para hoja 2 (reverso)</span>
+                <input
+                  type="range"
+                  min="0.6"
+                  max="1.6"
+                  step="0.05"
+                  value={attendeeOverrides[editingIndex]?.fontScaleBack ?? 1}
+                  onChange={(event) => updateAttendeeOverride(editingIndex, 'fontScaleBack', Number(event.target.value))}
+                />
+                <span className="control__value">{Math.round((attendeeOverrides[editingIndex]?.fontScaleBack ?? 1) * 100)}%</span>
+              </label>
+            </div>
+
+            <div className="person-preview">
+              <p className="person-preview__label">
+                Vista previa de <strong>{decoratedAttendees[editingIndex]?.fullName || 'la persona seleccionada'}</strong>
+              </p>
+              <p className="helper">Se refleja el modo actual y los tamaños personalizados.</p>
+              <div className="badge-pair badge-pair--compact">
+                <BadgeFace
+                  attendees={activeBadgeGroup}
+                  variant="front"
+                  template={activeTemplate}
+                  layoutMode={layoutMode}
+                  positionAdjustments={positionAdjustments}
+                  fontScale={fontScale}
+                />
+                <BadgeFace
+                  attendees={activeBadgeGroup}
+                  variant="back"
+                  template={activeTemplate}
+                  layoutMode={layoutMode}
+                  positionAdjustments={positionAdjustments}
+                  fontScale={fontScale}
+                />
+              </div>
+            </div>
           </div>
         ) : (
           <p className="empty">Carga nombres para habilitar la edición individual.</p>
