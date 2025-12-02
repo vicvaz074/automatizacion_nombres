@@ -469,13 +469,19 @@ function App() {
         backgroundColor: '#fff',
       })
       const imgData = canvas.toDataURL('image/png')
-      const imgWidth = pageWidth
-      const imgHeight = (canvas.height * imgWidth) / canvas.width
-      const finalHeight = imgHeight > pageHeight ? pageHeight : imgHeight
-      const finalWidth = imgHeight > pageHeight ? (canvas.width * pageHeight) / canvas.height : imgWidth
 
       if (index > 0) pdf.addPage()
-      pdf.addImage(imgData, 'PNG', 0, 0, finalWidth, finalHeight)
+
+      // Ajustar la imagen para que cubra toda la hoja carta manteniendo la proporción
+      // y sin dejar márgenes en blanco aunque la plantilla original tenga otras medidas.
+      const { width: imgWidth, height: imgHeight } = pdf.getImageProperties(imgData)
+      const coverScale = Math.max(pageWidth / imgWidth, pageHeight / imgHeight)
+      const renderWidth = imgWidth * coverScale
+      const renderHeight = imgHeight * coverScale
+      const offsetX = (pageWidth - renderWidth) / 2
+      const offsetY = (pageHeight - renderHeight) / 2
+
+      pdf.addImage(imgData, 'PNG', offsetX, offsetY, renderWidth, renderHeight)
     }
 
     pdf.save('gafetes.pdf')
