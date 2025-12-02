@@ -464,7 +464,7 @@ function App() {
     for (const [index, sheet] of sheetsToExport.entries()) {
       // eslint-disable-next-line no-await-in-loop
       const canvas = await html2canvas(sheet, {
-        scale: 2,
+        scale: 2.5,
         useCORS: true,
         backgroundColor: '#fff',
       })
