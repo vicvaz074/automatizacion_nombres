@@ -8,16 +8,22 @@ const FUTURA_STACK = "'Futura', 'Futura PT', 'Century Gothic', 'Arial', sans-ser
 
 const TEMPLATE_OPTIONS = [
   {
-    id: 'png-default',
-    label: 'Plantilla base (PNG)',
+    id: 'sheet-one',
+    label: 'Plantilla hoja 1 (frente y reverso)',
     front: '/Plantilla_hoja_1.png',
+    back: '/Plantilla_hoja_1.png',
+  },
+  {
+    id: 'sheet-two',
+    label: 'Plantilla hoja 2 (frente y reverso)',
+    front: '/Plantilla_hoja_2.png',
     back: '/Plantilla_hoja_2.png',
   },
   {
-    id: 'svg-alt',
-    label: 'Plantilla alternativa (SVG)',
-    front: '/template-front.svg',
-    back: '/template-back.svg',
+    id: 'mixed',
+    label: 'Combinado: hoja 1 al frente · hoja 2 al reverso',
+    front: '/Plantilla_hoja_1.png',
+    back: '/Plantilla_hoja_2.png',
   },
   {
     id: 'custom',
@@ -193,7 +199,7 @@ function buildAttendees(rows) {
     .filter(Boolean)
 }
 
-function buildNameStyles(attendee, isBack, positionAdjustments) {
+function buildNameStyles(attendee, isBack, positionAdjustments, fontScale = 1) {
   const { fullName, company } = attendee
   const { nameFontSize, companyFontSize, namesGap, namesOffset, namesWidth } = getTypographyMetrics(fullName, company)
 
@@ -202,11 +208,14 @@ function buildNameStyles(attendee, isBack, positionAdjustments) {
   const adjustedWidth = Math.max(50, namesWidth + positionAdjustments.width - (isBack ? 2 : 0))
   const topOffset = Math.max(12.5, adjustedOffset - 8.2)
   const bottomOffset = Math.max(10, adjustedOffset - 12.2)
+  const safeScale = Math.min(Math.max(fontScale, 0.6), 1.6)
+  const scaledNameSize = Math.round(nameFontSize * safeScale * 10) / 10
+  const scaledCompanySize = Math.round(companyFontSize * safeScale * 10) / 10
 
   return {
     fontFamily: FUTURA_STACK,
-    '--name-size': `${nameFontSize}pt`,
-    '--company-size': `${companyFontSize}pt`,
+    '--name-size': `${scaledNameSize}pt`,
+    '--company-size': `${scaledCompanySize}pt`,
     '--names-gap': `${adjustedGap}mm`,
     '--names-offset': `${adjustedOffset}mm`,
     '--names-offset-top': `${topOffset}mm`,
@@ -216,12 +225,18 @@ function buildNameStyles(attendee, isBack, positionAdjustments) {
   }
 }
 
-function BadgeFace({ attendees, variant = 'front', template, layoutMode, positionAdjustments }) {
+function BadgeFace({ attendees, variant = 'front', template, layoutMode, positionAdjustments, fontScale }) {
   const isBack = variant === 'back'
   const templateSrc = isBack ? template.back : template.front
   const [first, second] = attendees
-  const primaryStyles = buildNameStyles(first, isBack, positionAdjustments)
-  const secondaryStyles = second ? buildNameStyles(second, isBack, positionAdjustments) : primaryStyles
+  const baseScale = isBack ? fontScale.back : fontScale.front
+  const primaryScale = baseScale * (isBack ? first.fontScaleBack ?? 1 : first.fontScaleFront ?? 1)
+  const secondaryScale =
+    baseScale * (isBack ? second?.fontScaleBack ?? 1 : second?.fontScaleFront ?? 1)
+  const primaryStyles = buildNameStyles(first, isBack, positionAdjustments, primaryScale)
+  const secondaryStyles = second
+    ? buildNameStyles(second, isBack, positionAdjustments, secondaryScale)
+    : primaryStyles
   const isMirrorLayout = layoutMode === 'mirror'
 
   return (
@@ -270,6 +285,9 @@ function App() {
   const [customTemplate, setCustomTemplate] = useState({ front: '', back: '' })
   const [layoutMode, setLayoutMode] = useState('mirror')
   const [positionAdjustments, setPositionAdjustments] = useState({ vertical: 0, gap: 0, width: 0, horizontal: 0 })
+  const [fontScale, setFontScale] = useState({ front: 1, back: 1 })
+  const [attendeeOverrides, setAttendeeOverrides] = useState({})
+  const [editingIndex, setEditingIndex] = useState(0)
   const [objectUrls, setObjectUrls] = useState([])
   const [isExporting, setIsExporting] = useState(false)
 
@@ -279,6 +297,14 @@ function App() {
     },
     [objectUrls]
   )
+
+  useEffect(() => {
+    setEditingIndex((prev) => {
+      if (!attendees.length) return 0
+      if (prev >= attendees.length) return 0
+      return prev
+    })
+  }, [attendees.length])
 
   const handleFile = async (event) => {
     setError('')
@@ -296,6 +322,8 @@ function App() {
         setError('No se encontraron filas con las columnas "Empresa", "Apellido" y "Nombre".')
       }
       setAttendees(parsed)
+      setAttendeeOverrides({})
+      setEditingIndex(0)
     } catch (err) {
       console.error(err)
       setError('No pudimos leer el archivo. Asegúrate de subir un Excel (.xlsx) con las columnas esperadas.')
@@ -318,11 +346,34 @@ function App() {
       Nombre: row.firstName,
     }))
     setAttendees(buildAttendees(sampleRows))
+    setAttendeeOverrides({})
+    setEditingIndex(0)
     setError('')
   }
 
   const updatePosition = (field, value) => {
     setPositionAdjustments((prev) => ({ ...prev, [field]: value }))
+  }
+
+  const updateFontScale = (side, value) => {
+    setFontScale((prev) => ({ ...prev, [side]: value }))
+  }
+
+  const updateAttendeeOverride = (index, field, value) => {
+    setAttendeeOverrides((prev) => ({
+      ...prev,
+      [index]: {
+        ...(prev[index] || {}),
+        [field]: value,
+      },
+    }))
+  }
+
+  const resetAttendeeOverride = (index) => {
+    setAttendeeOverrides((prev) => {
+      const { [index]: removed, ...rest } = prev
+      return rest
+    })
   }
 
   const activeTemplate = useMemo(() => {
@@ -336,18 +387,33 @@ function App() {
     [activeTemplate]
   )
 
+  const decoratedAttendees = useMemo(
+    () =>
+      attendees.map((attendee, index) => {
+        const overrides = attendeeOverrides[index] || {}
+        return {
+          ...attendee,
+          fullName: overrides.name ?? attendee.fullName,
+          company: overrides.company ?? attendee.company,
+          fontScaleFront: overrides.fontScaleFront ?? 1,
+          fontScaleBack: overrides.fontScaleBack ?? 1,
+        }
+      }),
+    [attendeeOverrides, attendees]
+  )
+
   const badgeGroups = useMemo(() => {
-    if (layoutMode === 'mirror') return attendees.map((attendee) => [attendee])
+    if (layoutMode === 'mirror') return decoratedAttendees.map((attendee) => [attendee])
 
     const groups = []
-    for (let i = 0; i < attendees.length; i += 2) {
-      groups.push(attendees.slice(i, i + 2))
+    for (let i = 0; i < decoratedAttendees.length; i += 2) {
+      groups.push(decoratedAttendees.slice(i, i + 2))
     }
     return groups
-  }, [attendees, layoutMode])
+  }, [decoratedAttendees, layoutMode])
 
   const totalSheets = useMemo(() => badgeGroups.length, [badgeGroups])
-  const totalPeople = useMemo(() => attendees.length, [attendees])
+  const totalPeople = useMemo(() => decoratedAttendees.length, [decoratedAttendees])
 
   const handleDownloadPDF = async () => {
     if (!badgeGroups.length || missingCustomTemplate) return
@@ -464,6 +530,36 @@ function App() {
         </div>
 
         <div>
+          <p className="panel__title">Tamaño de letra</p>
+          <div className="controls controls--inline">
+            <label className="control">
+              <span>Hoja 1 / Frente</span>
+              <input
+                type="range"
+                min="0.6"
+                max="1.6"
+                step="0.05"
+                value={fontScale.front}
+                onChange={(event) => updateFontScale('front', Number(event.target.value))}
+              />
+              <span className="control__value">{Math.round(fontScale.front * 100)}%</span>
+            </label>
+            <label className="control">
+              <span>Hoja 2 / Reverso</span>
+              <input
+                type="range"
+                min="0.6"
+                max="1.6"
+                step="0.05"
+                value={fontScale.back}
+                onChange={(event) => updateFontScale('back', Number(event.target.value))}
+              />
+              <span className="control__value">{Math.round(fontScale.back * 100)}%</span>
+            </label>
+          </div>
+        </div>
+
+        <div>
           <p className="panel__title">Ajuste fino de texto</p>
           <div className="controls grid">
             <label className="control">
@@ -518,6 +614,90 @@ function App() {
         </div>
       </section>
 
+      <section className="panel panel--stacked">
+        <div className="panel__heading">
+          <div>
+            <p className="panel__title">Edición individual</p>
+            <p className="helper">
+              Ajusta un nombre o empresa de manera puntual y controla el tamaño de letra de cada hoja (frente y reverso)
+              sin afectar a los demás.
+            </p>
+          </div>
+          <div className="controls controls--inline">
+            <label className="control">
+              <span>Selecciona una persona</span>
+              <select
+                value={decoratedAttendees.length ? editingIndex : ''}
+                onChange={(event) => setEditingIndex(Number(event.target.value))}
+                disabled={!decoratedAttendees.length}
+              >
+                {!decoratedAttendees.length && <option value="">Sube tu Excel para editar</option>}
+                {decoratedAttendees.map((person, index) => (
+                  <option key={`${person.fullName}-${index}`} value={index}>
+                    {person.fullName || `Persona ${index + 1}`}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <button
+              type="button"
+              className="ghost"
+              disabled={!decoratedAttendees.length}
+              onClick={() => resetAttendeeOverride(editingIndex)}
+            >
+              Restablecer persona
+            </button>
+          </div>
+        </div>
+
+        {decoratedAttendees.length > 0 ? (
+          <div className="editor-grid">
+            <label className="control">
+              <span>Nombre a mostrar</span>
+              <input
+                type="text"
+                value={attendeeOverrides[editingIndex]?.name ?? attendees[editingIndex]?.fullName ?? ''}
+                onChange={(event) => updateAttendeeOverride(editingIndex, 'name', event.target.value)}
+              />
+            </label>
+            <label className="control">
+              <span>Empresa a mostrar</span>
+              <input
+                type="text"
+                value={attendeeOverrides[editingIndex]?.company ?? attendees[editingIndex]?.company ?? ''}
+                onChange={(event) => updateAttendeeOverride(editingIndex, 'company', event.target.value)}
+              />
+            </label>
+            <label className="control">
+              <span>Tamaño solo para hoja 1 (frente)</span>
+              <input
+                type="range"
+                min="0.6"
+                max="1.6"
+                step="0.05"
+                value={attendeeOverrides[editingIndex]?.fontScaleFront ?? 1}
+                onChange={(event) => updateAttendeeOverride(editingIndex, 'fontScaleFront', Number(event.target.value))}
+              />
+              <span className="control__value">{Math.round((attendeeOverrides[editingIndex]?.fontScaleFront ?? 1) * 100)}%</span>
+            </label>
+            <label className="control">
+              <span>Tamaño solo para hoja 2 (reverso)</span>
+              <input
+                type="range"
+                min="0.6"
+                max="1.6"
+                step="0.05"
+                value={attendeeOverrides[editingIndex]?.fontScaleBack ?? 1}
+                onChange={(event) => updateAttendeeOverride(editingIndex, 'fontScaleBack', Number(event.target.value))}
+              />
+              <span className="control__value">{Math.round((attendeeOverrides[editingIndex]?.fontScaleBack ?? 1) * 100)}%</span>
+            </label>
+          </div>
+        ) : (
+          <p className="empty">Carga nombres para habilitar la edición individual.</p>
+        )}
+      </section>
+
       {error && <div className="alert">{error}</div>}
 
       <section className="status">
@@ -555,6 +735,7 @@ function App() {
                 template={activeTemplate}
                 layoutMode={layoutMode}
                 positionAdjustments={positionAdjustments}
+                fontScale={fontScale}
               />
               <BadgeFace
                 attendees={group}
@@ -562,6 +743,7 @@ function App() {
                 template={activeTemplate}
                 layoutMode={layoutMode}
                 positionAdjustments={positionAdjustments}
+                fontScale={fontScale}
               />
             </div>
           ))}
