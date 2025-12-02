@@ -195,7 +195,7 @@ function buildAttendees(rows) {
     .filter(Boolean)
 }
 
-function buildNameStyles(attendee, isBack, positionAdjustments, fontScale = 1) {
+function buildNameStyles(attendee, isBack, positionAdjustments, fontScale = 1, uniformMetrics) {
   const { fullName, company } = attendee
   const { nameFontSize, companyFontSize, namesGap, namesOffset, namesWidth } = getTypographyMetrics(fullName, company)
 
@@ -206,27 +206,38 @@ function buildNameStyles(attendee, isBack, positionAdjustments, fontScale = 1) {
   const safeScale = Math.min(Math.max(fontScale, 0.6), 1.6)
   const scaledNameSize = Math.round(nameFontSize * safeScale * 10) / 10
   const scaledCompanySize = Math.round(companyFontSize * safeScale * 10) / 10
+  const uniformNameSize = uniformMetrics?.nameFontSize
+  const uniformCompanySize = uniformMetrics?.companyFontSize
+  const uniformNamesWidth = uniformMetrics?.namesWidth
 
   return {
     fontFamily: FUTURA_STACK,
-    '--name-size': `${scaledNameSize}pt`,
-    '--company-size': `${scaledCompanySize}pt`,
+    '--name-size': `${uniformNameSize ?? scaledNameSize}pt`,
+    '--company-size': `${uniformCompanySize ?? scaledCompanySize}pt`,
     '--names-gap': `${adjustedGap}mm`,
     '--names-offset': `${adjustedOffset}mm`,
     '--names-offset-top': `${mirroredOffset}mm`,
     '--names-offset-bottom': `${mirroredOffset}mm`,
-    '--names-width': `${adjustedWidth}mm`,
+    '--names-width': `${uniformNamesWidth ?? adjustedWidth}mm`,
     '--names-horizontal': `${positionAdjustments.horizontal}mm`,
   }
 }
 
-function BadgeFace({ attendees, variant = 'front', template, positionAdjustments, fontScale, hideTemplateImage = false }) {
+function BadgeFace({
+  attendees,
+  variant = 'front',
+  template,
+  positionAdjustments,
+  fontScale,
+  hideTemplateImage = false,
+  uniformMetrics,
+}) {
   const isBack = variant === 'back'
   const templateSrc = hideTemplateImage ? '' : isBack ? template.back : template.front
   const [first] = attendees
   const baseScale = isBack ? fontScale.back : fontScale.front
   const primaryScale = baseScale * (isBack ? first.fontScaleBack ?? 1 : first.fontScaleFront ?? 1)
-  const primaryStyles = buildNameStyles(first, isBack, positionAdjustments, primaryScale)
+  const primaryStyles = buildNameStyles(first, isBack, positionAdjustments, primaryScale, uniformMetrics)
 
   return (
     <section className={`badge badge--${variant} ${templateSrc ? '' : 'badge--sheet-template'}`}>
@@ -280,6 +291,21 @@ function buildSlots(sheet, variant) {
   return arranged
 }
 
+function buildUniformMetrics(attendees) {
+  if (!attendees.length) return null
+
+  const metrics = attendees.map((person) => getTypographyMetrics(person.fullName, person.company))
+  const nameFontSize = Math.min(...metrics.map((item) => item.nameFontSize))
+  const companyFontSize = Math.min(...metrics.map((item) => item.companyFontSize))
+  const namesWidth = Math.max(...metrics.map((item) => item.namesWidth))
+
+  return {
+    nameFontSize,
+    companyFontSize,
+    namesWidth,
+  }
+}
+
 function PrintSheet({
   sheet,
   variant,
@@ -287,6 +313,7 @@ function PrintSheet({
   positionAdjustments,
   fontScale,
   index,
+  uniformMetrics,
 }) {
   const useSheetTemplate = template.layout === 'sheet'
   const sheetTemplateSrc = variant === 'back' ? template.back : template.front
@@ -313,6 +340,7 @@ function PrintSheet({
               template={useSheetTemplate ? { ...template, front: '', back: '' } : template}
               positionAdjustments={positionAdjustments}
               fontScale={fontScale}
+              uniformMetrics={uniformMetrics}
               hideTemplateImage={useSheetTemplate}
             />
           ) : (
@@ -487,6 +515,8 @@ function App() {
     () => (decoratedAttendees.length ? [decoratedAttendees[editingIndex] || decoratedAttendees[0]] : []),
     [decoratedAttendees, editingIndex]
   )
+
+  const uniformMetrics = useMemo(() => buildUniformMetrics(decoratedAttendees), [decoratedAttendees])
 
   const handleDownloadPDF = async () => {
     if (!badgeGroups.length || missingCustomTemplate) return
@@ -917,6 +947,7 @@ function App() {
                       positionAdjustments={positionAdjustments}
                       fontScale={fontScale}
                       index={activeSheetIndex}
+                      uniformMetrics={uniformMetrics}
                     />
                   </div>
                   <div className="badge-preview">
@@ -928,6 +959,7 @@ function App() {
                       positionAdjustments={positionAdjustments}
                       fontScale={fontScale}
                       index={activeSheetIndex}
+                      uniformMetrics={uniformMetrics}
                     />
                   </div>
                 </div>
@@ -976,6 +1008,7 @@ function App() {
                 positionAdjustments={positionAdjustments}
                 fontScale={fontScale}
                 index={index}
+                uniformMetrics={uniformMetrics}
               />
               <PrintSheet
                 sheet={sheet}
@@ -984,6 +1017,7 @@ function App() {
                 positionAdjustments={positionAdjustments}
                 fontScale={fontScale}
                 index={index}
+                uniformMetrics={uniformMetrics}
               />
             </div>
           ))}
