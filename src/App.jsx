@@ -415,6 +415,10 @@ function App() {
   const totalSheets = useMemo(() => badgeGroups.length, [badgeGroups])
   const totalPeople = useMemo(() => decoratedAttendees.length, [decoratedAttendees])
 
+  const editingPerson = decoratedAttendees[editingIndex] || null
+  const editingPositionLabel = decoratedAttendees.length ? `#${editingIndex + 1} de ${decoratedAttendees.length}` : 'Sin selección'
+  const isPersonCustomized = Boolean(attendeeOverrides[editingIndex])
+
   const activeBadgeGroup = useMemo(() => {
     if (!decoratedAttendees.length) return []
     if (layoutMode === 'mirror') {
@@ -630,7 +634,8 @@ function App() {
             <p className="panel__title">Edición individual</p>
             <p className="helper">
               Ajusta un nombre o empresa de manera puntual y controla el tamaño de letra de cada hoja (frente y reverso)
-              sin afectar a los demás. Usa los botones para recorrer rápidamente la lista y ver una vista previa al lado.
+              sin afectar a los demás. Recorre la lista, aplica cambios rápidos y valida en la vista previa inmediata de
+              cada lado.
             </p>
           </div>
           <div className="controls controls--inline">
@@ -687,75 +692,119 @@ function App() {
         </div>
 
         {decoratedAttendees.length > 0 ? (
-          <div className="individual-editor">
-            <div className="editor-grid">
-              <label className="control">
-                <span>Nombre a mostrar</span>
-                <input
-                  type="text"
-                  value={attendeeOverrides[editingIndex]?.name ?? attendees[editingIndex]?.fullName ?? ''}
-                  onChange={(event) => updateAttendeeOverride(editingIndex, 'name', event.target.value)}
-                />
-              </label>
-              <label className="control">
-                <span>Empresa a mostrar</span>
-                <input
-                  type="text"
-                  value={attendeeOverrides[editingIndex]?.company ?? attendees[editingIndex]?.company ?? ''}
-                  onChange={(event) => updateAttendeeOverride(editingIndex, 'company', event.target.value)}
-                />
-              </label>
-              <label className="control">
-                <span>Tamaño solo para hoja 1 (frente)</span>
-                <input
-                  type="range"
-                  min="0.6"
-                  max="1.6"
-                  step="0.05"
-                  value={attendeeOverrides[editingIndex]?.fontScaleFront ?? 1}
-                  onChange={(event) => updateAttendeeOverride(editingIndex, 'fontScaleFront', Number(event.target.value))}
-                />
-                <span className="control__value">{Math.round((attendeeOverrides[editingIndex]?.fontScaleFront ?? 1) * 100)}%</span>
-              </label>
-              <label className="control">
-                <span>Tamaño solo para hoja 2 (reverso)</span>
-                <input
-                  type="range"
-                  min="0.6"
-                  max="1.6"
-                  step="0.05"
-                  value={attendeeOverrides[editingIndex]?.fontScaleBack ?? 1}
-                  onChange={(event) => updateAttendeeOverride(editingIndex, 'fontScaleBack', Number(event.target.value))}
-                />
-                <span className="control__value">{Math.round((attendeeOverrides[editingIndex]?.fontScaleBack ?? 1) * 100)}%</span>
-              </label>
+          <>
+            <div className="person-rail" role="list">
+              {decoratedAttendees.map((person, index) => {
+                const isActive = index === editingIndex
+                const hasChanges = Boolean(attendeeOverrides[index])
+                return (
+                  <button
+                    type="button"
+                    key={`${person.fullName}-${index}`}
+                    className={`person-chip ${isActive ? 'person-chip--active' : ''} ${hasChanges ? 'person-chip--dirty' : ''}`}
+                    onClick={() => setEditingIndex(index)}
+                    aria-current={isActive}
+                    role="listitem"
+                  >
+                    <span className="person-chip__name">{person.fullName || `Persona ${index + 1}`}</span>
+                    <span className="person-chip__meta">{person.company || 'Sin empresa'}</span>
+                    {hasChanges && <span className="pill pill--mini">Ajustado</span>}
+                  </button>
+                )
+              })}
             </div>
 
-            <div className="person-preview">
-              <p className="person-preview__label">
-                Vista previa de <strong>{decoratedAttendees[editingIndex]?.fullName || 'la persona seleccionada'}</strong>
-              </p>
-              <p className="helper">Se refleja el modo actual y los tamaños personalizados.</p>
-              <div className="badge-pair badge-pair--compact">
-                <BadgeFace
-                  attendees={activeBadgeGroup}
-                  variant="front"
-                  template={activeTemplate}
-                  layoutMode={layoutMode}
-                  positionAdjustments={positionAdjustments}
-                  fontScale={fontScale}
-                />
-                <BadgeFace
-                  attendees={activeBadgeGroup}
-                  variant="back"
-                  template={activeTemplate}
-                  layoutMode={layoutMode}
-                  positionAdjustments={positionAdjustments}
-                  fontScale={fontScale}
-                />
+            <div className="individual-editor">
+              <div className="editor-grid">
+                <div className="control control--summary">
+                  <span className="label">Editando</span>
+                  <strong>{editingPerson?.fullName || 'Selecciona una persona'}</strong>
+                  <div className="pill pill--neutral">{editingPositionLabel}</div>
+                  {isPersonCustomized ? <p className="helper">Esta persona tiene ajustes únicos.</p> : <p className="helper">Los valores se basan en el Excel original.</p>}
+                </div>
+                <label className="control">
+                  <span>Nombre a mostrar</span>
+                  <input
+                    type="text"
+                    value={attendeeOverrides[editingIndex]?.name ?? attendees[editingIndex]?.fullName ?? ''}
+                    onChange={(event) => updateAttendeeOverride(editingIndex, 'name', event.target.value)}
+                    placeholder="Nombre y apellidos"
+                  />
+                  <span className="control__hint">Ideal para corregir tildes o apellidos compuestos.</span>
+                </label>
+                <label className="control">
+                  <span>Empresa a mostrar</span>
+                  <input
+                    type="text"
+                    value={attendeeOverrides[editingIndex]?.company ?? attendees[editingIndex]?.company ?? ''}
+                    onChange={(event) => updateAttendeeOverride(editingIndex, 'company', event.target.value)}
+                    placeholder="Nombre de la empresa"
+                  />
+                  <span className="control__hint">Se adapta automáticamente a textos largos.</span>
+                </label>
+                <label className="control">
+                  <span>Tamaño solo para hoja 1 (frente)</span>
+                  <input
+                    type="range"
+                    min="0.6"
+                    max="1.6"
+                    step="0.05"
+                    value={attendeeOverrides[editingIndex]?.fontScaleFront ?? 1}
+                    onChange={(event) => updateAttendeeOverride(editingIndex, 'fontScaleFront', Number(event.target.value))}
+                  />
+                  <span className="control__value">{Math.round((attendeeOverrides[editingIndex]?.fontScaleFront ?? 1) * 100)}%</span>
+                  <span className="control__hint">Usa esto cuando el nombre en el frente necesite más aire.</span>
+                </label>
+                <label className="control">
+                  <span>Tamaño solo para hoja 2 (reverso)</span>
+                  <input
+                    type="range"
+                    min="0.6"
+                    max="1.6"
+                    step="0.05"
+                    value={attendeeOverrides[editingIndex]?.fontScaleBack ?? 1}
+                    onChange={(event) => updateAttendeeOverride(editingIndex, 'fontScaleBack', Number(event.target.value))}
+                  />
+                  <span className="control__value">{Math.round((attendeeOverrides[editingIndex]?.fontScaleBack ?? 1) * 100)}%</span>
+                  <span className="control__hint">Ajusta aquí si la cara posterior se ve más cargada.</span>
+                </label>
+              </div>
+
+              <div className="person-preview">
+                <div className="person-preview__header">
+                  <p className="person-preview__label">
+                    Vista previa en vivo de <strong>{editingPerson?.fullName || 'la persona seleccionada'}</strong>
+                  </p>
+                  <div className="pill pill--neutral">{layoutMode === 'mirror' ? 'Modo espejo' : 'Modo doble'}</div>
+                </div>
+                <p className="helper">Observa cómo se verá cada lado sin salir de la edición individual.</p>
+                <div className="badge-pair badge-pair--compact">
+                  <div className="badge-preview">
+                    <p className="badge-preview__label">Frente</p>
+                    <BadgeFace
+                      attendees={activeBadgeGroup}
+                      variant="front"
+                      template={activeTemplate}
+                      layoutMode={layoutMode}
+                      positionAdjustments={positionAdjustments}
+                      fontScale={fontScale}
+                    />
+                  </div>
+                  <div className="badge-preview">
+                    <p className="badge-preview__label">Reverso</p>
+                    <BadgeFace
+                      attendees={activeBadgeGroup}
+                      variant="back"
+                      template={activeTemplate}
+                      layoutMode={layoutMode}
+                      positionAdjustments={positionAdjustments}
+                      fontScale={fontScale}
+                    />
+                  </div>
+                </div>
               </div>
             </div>
-          </div>
+          </>
         ) : (
           <p className="empty">Carga nombres para habilitar la edición individual.</p>
         )}
