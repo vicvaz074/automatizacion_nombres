@@ -8,6 +8,7 @@ const FUTURA_STACK = "'Futura', 'Futura PT', 'Century Gothic', 'Arial', sans-ser
 const DEFAULT_TEMPLATE_PATH = encodeURI('/Plantilla_4_personas.png')
 const DEFAULT_TEMPLATE_PATH_FRONT = DEFAULT_TEMPLATE_PATH
 const DEFAULT_TEMPLATE_PATH_BACK = DEFAULT_TEMPLATE_PATH
+const COMPANY_FONT_BOOST = 1.12
 
 const TEMPLATE_OPTIONS = [
   {
@@ -152,6 +153,8 @@ function getTypographyMetrics(fullName, company) {
     nameToCompanyBalance
   )
 
+  const boostedCompanyFontSize = Math.max(10.4, Math.round(companyFontSize * COMPANY_FONT_BOOST * 10) / 10)
+
   const baseGap = 3.2
   const multilineGapBoost = estimatedNameLines >= 3 ? 1.18 : estimatedNameLines === 2 ? 1.12 : 1
   const companyLinesBoost = estimatedCompanyLines >= 2 ? 1.12 + Math.min(0.18, (estimatedCompanyLines - 2) * 0.05) : 1
@@ -172,7 +175,7 @@ function getTypographyMetrics(fullName, company) {
   )
   const namesWidth = Math.max(64, Math.round((74 - widthPenalty) * 10) / 10)
 
-  return { nameFontSize, companyFontSize, namesGap, namesOffset, namesWidth }
+  return { nameFontSize, companyFontSize: boostedCompanyFontSize, namesGap, namesOffset, namesWidth }
 }
 
 function buildAttendees(rows) {
