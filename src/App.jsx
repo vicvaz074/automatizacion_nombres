@@ -240,6 +240,22 @@ function BadgeFace({ attendees, variant = 'front', template, positionAdjustments
   )
 }
 
+function preloadImage(src) {
+  return new Promise((resolve) => {
+    if (!src) {
+      resolve()
+      return
+    }
+
+    const img = new Image()
+    img.onload = () => resolve()
+    img.onerror = () => resolve()
+    img.src = src
+  })
+}
+
+const EXPORT_SCALE = Math.max(3, window.devicePixelRatio * 2)
+
 function chunkIntoSheets(groups, perSheet = 4) {
   const sheets = []
   for (let i = 0; i < groups.length; i += perSheet) {
@@ -457,27 +473,33 @@ function App() {
     setError('')
 
     try {
+      await Promise.all([preloadImage(activeTemplate.front), preloadImage(activeTemplate.back)])
+
       const sheetsToExport = Array.from(document.querySelectorAll('.preview .print-sheet'))
       const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'letter' })
       const pageWidth = pdf.internal.pageSize.getWidth()
       const pageHeight = pdf.internal.pageSize.getHeight()
 
       for (const [index, sheet] of sheetsToExport.entries()) {
+        const { width, height } = sheet.getBoundingClientRect()
+        const scaledWidth = Math.round(width)
+        const scaledHeight = Math.round(height)
+
         // eslint-disable-next-line no-await-in-loop
         const canvas = await html2canvas(sheet, {
-          scale: 2.5,
+          scale: EXPORT_SCALE,
           useCORS: true,
           backgroundColor: '#fff',
-          width: sheet.offsetWidth,
-          height: sheet.offsetHeight,
+          width: scaledWidth,
+          height: scaledHeight,
+          windowWidth: scaledWidth,
+          windowHeight: scaledHeight,
           scrollX: 0,
           scrollY: 0,
         })
-        const imgData = canvas.toDataURL('image/png')
+        const imgData = canvas.toDataURL('image/png', 1)
 
         if (index > 0) pdf.addPage()
-        // Forzar al lienzo a ocupar toda la página carta para evitar recortes
-        // o márgenes generados por diferencias de proporción en la plantilla original.
         pdf.addImage(imgData, 'PNG', 0, 0, pageWidth, pageHeight)
       }
 

@@ -456,6 +456,9 @@ button.ghost {
   box-sizing: border-box;
   padding: 12mm;
   background: white;
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: 100% 100%;
   border: 1px solid var(--border);
   border-radius: 16px;
   box-shadow: 0 12px 30px rgba(0, 0, 0, 0.05);
@@ -472,9 +475,9 @@ button.ghost {
   padding: 0;
   gap: 0;
   background-position: top left;
-  background-size: 100% 100%;
-  background-repeat: no-repeat;
+  background-size: cover;
   image-rendering: optimizeQuality;
+  image-rendering: -webkit-optimize-contrast;
 }
 
 .print-sheet--back {
@@ -720,6 +723,9 @@ code {
     width: var(--sheet-width);
     height: var(--sheet-height);
     background: white;
+    background-repeat: no-repeat;
+    background-position: center;
+    background-size: cover;
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
     border: none;
