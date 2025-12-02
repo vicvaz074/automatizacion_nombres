@@ -335,6 +335,7 @@ function App() {
   const [objectUrls, setObjectUrls] = useState([])
   const [isExporting, setIsExporting] = useState(false)
   const [quickSearch, setQuickSearch] = useState('')
+  const [highlightedSuggestion, setHighlightedSuggestion] = useState(null)
 
   useEffect(
     () => () => {
@@ -449,6 +450,23 @@ function App() {
     [attendeeOverrides, attendees]
   )
 
+  const suggestionCatalog = useMemo(
+    () =>
+      decoratedAttendees.map((person, index) => ({
+        index,
+        label: `${person.fullName || `Persona ${index + 1}`} · ${person.company || 'Sin empresa'}`,
+      })),
+    [decoratedAttendees]
+  )
+
+  const filteredSuggestions = useMemo(() => {
+    if (!quickSearch.trim()) return suggestionCatalog.slice(0, 8)
+    const normalized = quickSearch.toLowerCase()
+    return suggestionCatalog
+      .filter((item) => item.label.toLowerCase().includes(normalized))
+      .slice(0, 8)
+  }, [quickSearch, suggestionCatalog])
+
   const badgeGroups = useMemo(() => {
     if (layoutMode === 'mirror') return decoratedAttendees.map((attendee) => [attendee])
 
@@ -509,6 +527,7 @@ function App() {
 
   const handleQuickSelect = (value) => {
     setQuickSearch(value)
+    setHighlightedSuggestion(null)
     if (!value.trim()) return
 
     const normalized = value.toLowerCase()
@@ -529,6 +548,12 @@ function App() {
     if (fuzzyIndex >= 0) {
       setEditingIndex(fuzzyIndex)
     }
+  }
+
+  const handleSuggestionPick = (index, label) => {
+    setHighlightedSuggestion(label)
+    setQuickSearch(label)
+    setEditingIndex(index)
   }
 
   return (
@@ -743,14 +768,26 @@ function App() {
                 disabled={!decoratedAttendees.length}
               />
               <datalist id="people-suggestions">
-                {decoratedAttendees.map((person, index) => (
-                  <option
-                    key={`${person.fullName}-${person.company}-${index}`}
-                    value={`${person.fullName || `Persona ${index + 1}`} · ${person.company || 'Sin empresa'}`}
-                  />
+                {filteredSuggestions.map((item) => (
+                  <option key={item.label} value={item.label} />
                 ))}
               </datalist>
               <span className="control__hint">Autocompleta y salta directo a la persona que necesitas.</span>
+              {Boolean(filteredSuggestions.length) && quickSearch.trim() && (
+                <div className="suggestion-grid" role="listbox" aria-label="Coincidencias rápidas">
+                  {filteredSuggestions.map((item) => (
+                    <button
+                      type="button"
+                      key={item.label}
+                      className={`suggestion ${highlightedSuggestion === item.label ? 'suggestion--active' : ''}`}
+                      onClick={() => handleSuggestionPick(item.index, item.label)}
+                    >
+                      <span className="suggestion__name">{item.label}</span>
+                      <span className="pill pill--mini">Ir a #{item.index + 1}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
             </label>
             <div className="inline-actions">
               <button

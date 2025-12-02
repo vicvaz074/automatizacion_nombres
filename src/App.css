@@ -204,6 +204,38 @@ button.ghost {
   scroll-snap-type: x proximity;
 }
 
+.suggestion-grid {
+  margin-top: 0.35rem;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 0.35rem;
+}
+
+.suggestion {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.55rem 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: #f8fafc;
+  cursor: pointer;
+  text-align: left;
+  color: var(--ink);
+}
+
+.suggestion:hover,
+.suggestion--active {
+  border-color: #111827;
+  background: #fff;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.06);
+}
+
+.suggestion__name {
+  display: block;
+  font-weight: 600;
+}
+
 .person-chip {
   min-width: 170px;
   border: 1px solid var(--border);
@@ -415,7 +447,7 @@ button.ghost {
   position: relative;
   width: 215.9mm;
   height: 279.4mm;
-  padding: 14mm;
+  padding: 12mm;
   background: white;
   border: 1px solid var(--border);
   border-radius: 16px;
@@ -423,7 +455,9 @@ button.ghost {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
   grid-template-rows: repeat(2, 1fr);
-  gap: 8mm;
+  gap: 6mm;
+  justify-items: center;
+  align-items: center;
 }
 
 .print-sheet--back {
@@ -490,7 +524,7 @@ button.ghost {
 
 .badge {
   position: relative;
-  width: 96mm;
+  width: 92mm;
   height: 124mm;
   background: white;
   border: 1px solid var(--border);
