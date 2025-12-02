@@ -12,12 +12,14 @@ const TEMPLATE_OPTIONS = [
     label: 'Plantilla 4 personas (tamaño carta)',
     front: '/Plantilla 4 personas.png',
     back: '/Plantilla 4 personas.png',
+    layout: 'sheet',
   },
   {
     id: 'custom',
     label: 'Usar mi propia plantilla',
     front: '',
     back: '',
+    layout: 'sheet',
   },
 ]
 
@@ -253,7 +255,7 @@ function PrintSheet({
   index,
 }) {
   const placeholders = Array.from({ length: Math.max(0, 4 - sheet.length) })
-  const useSheetTemplate = template.id === 'sheet-letter'
+  const useSheetTemplate = template.layout === 'sheet'
   const sheetTemplateSrc = variant === 'back' ? template.back : template.front
   const sheetStyle = useSheetTemplate && sheetTemplateSrc ? { backgroundImage: `url(${sheetTemplateSrc})` } : undefined
 
