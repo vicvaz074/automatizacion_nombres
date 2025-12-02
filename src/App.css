@@ -432,21 +432,27 @@ button.ghost {
   gap: 1.5rem;
 }
 
+
 .sheet-grid {
   display: grid;
   gap: 1rem;
+  justify-items: center;
 }
 
 .sheet-pair {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  justify-items: center;
   gap: 0.75rem;
 }
 
 .print-sheet {
+  --sheet-width: 215.9mm;
+  --sheet-height: 279.4mm;
   position: relative;
-  width: 215.9mm;
-  height: 279.4mm;
+  width: min(100%, var(--sheet-width));
+  height: auto;
+  aspect-ratio: 215.9 / 279.4;
   padding: 12mm;
   background: white;
   border: 1px solid var(--border);
@@ -537,6 +543,18 @@ button.ghost {
   margin: 0;
   color: var(--muted);
   font-size: 0.9rem;
+}
+
+@media (max-width: 1200px) {
+  .sheet-pair {
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+  }
+
+  .print-sheet {
+    width: 100%;
+    max-width: var(--sheet-width);
+  }
 }
 
 @media (max-width: 900px) {
@@ -654,6 +672,8 @@ code {
   body {
     background: #fff;
     margin: 0;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
   }
   .page,
   .hero,
@@ -694,8 +714,11 @@ code {
     page-break-after: auto;
   }
   .print-sheet {
-    width: 100%;
-    height: auto;
+    width: var(--sheet-width);
+    height: var(--sheet-height);
+    background: white;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
     border: none;
     box-shadow: none;
     page-break-after: always;
