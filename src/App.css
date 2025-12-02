@@ -400,21 +400,70 @@ button.ghost {
   gap: 1.5rem;
 }
 
+.sheet-grid {
+  display: grid;
+  gap: 1rem;
+}
+
+.sheet-pair {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 0.75rem;
+}
+
+.print-sheet {
+  position: relative;
+  width: 215.9mm;
+  height: 279.4mm;
+  padding: 14mm;
+  background: white;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.05);
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  grid-template-rows: repeat(2, 1fr);
+  gap: 8mm;
+}
+
+.print-sheet--back {
+  transform: rotate(180deg);
+}
+
+.print-sheet__label {
+  position: absolute;
+  top: 8px;
+  right: 12px;
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.print-slot {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f9fafb;
+  border-radius: 12px;
+  padding: 6px;
+}
+
+.print-slot__placeholder {
+  width: 100%;
+  height: 100%;
+  border: 1px dashed var(--border);
+  border-radius: 12px;
+  display: grid;
+  place-items: center;
+  color: var(--muted);
+  text-align: center;
+  padding: 0.5rem;
+}
+
 .badge-pair {
   display: grid;
   gap: 0.75rem;
   justify-items: center;
-}
-
-.badge-pair--compact {
-  gap: 0.5rem;
-}
-
-.badge-pair--compact .badge {
-  width: 82mm;
-  height: 82mm;
-  transform: scale(0.94);
-  transform-origin: top center;
 }
 
 .badge-preview {
@@ -434,12 +483,6 @@ button.ghost {
     grid-template-columns: 1fr;
   }
 
-  .badge-pair--compact .badge {
-    width: 88mm;
-    height: 88mm;
-    transform: scale(0.88);
-  }
-
   .person-rail {
     padding-bottom: 0.5rem;
   }
@@ -447,8 +490,8 @@ button.ghost {
 
 .badge {
   position: relative;
-  width: 100mm;
-  height: 100mm;
+  width: 96mm;
+  height: 124mm;
   background: white;
   border: 1px solid var(--border);
   border-radius: 8px;
@@ -545,7 +588,9 @@ code {
   .status,
   .preview,
   .badge-grid,
-  .badge-pair {
+  .badge-pair,
+  .sheet-grid,
+  .sheet-pair {
     max-width: none;
     padding: 0;
     margin: 0;
@@ -576,16 +621,24 @@ code {
     display: block;
     page-break-after: auto;
   }
-  .badge {
+  .print-sheet {
+    width: 100%;
+    height: auto;
     border: none;
-    margin: 0 auto;
+    box-shadow: none;
     page-break-after: always;
   }
-  .badge:last-child {
-    page-break-after: auto;
+  .print-sheet--back {
+    transform: rotate(180deg);
+  }
+  .print-sheet__label {
+    display: none;
+  }
+  .badge {
+    border: none;
   }
   @page {
-    size: 100mm 100mm;
+    size: letter;
     margin: 0;
   }
 }
