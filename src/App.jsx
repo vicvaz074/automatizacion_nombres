@@ -469,13 +469,11 @@ function App() {
         backgroundColor: '#fff',
       })
       const imgData = canvas.toDataURL('image/png')
-      const imgWidth = pageWidth
-      const imgHeight = (canvas.height * imgWidth) / canvas.width
-      const finalHeight = imgHeight > pageHeight ? pageHeight : imgHeight
-      const finalWidth = imgHeight > pageHeight ? (canvas.width * pageHeight) / canvas.height : imgWidth
 
       if (index > 0) pdf.addPage()
-      pdf.addImage(imgData, 'PNG', 0, 0, finalWidth, finalHeight)
+      // Forzar al lienzo a ocupar toda la página carta para evitar recortes
+      // o márgenes generados por diferencias de proporción en la plantilla original.
+      pdf.addImage(imgData, 'PNG', 0, 0, pageWidth, pageHeight)
     }
 
     pdf.save('gafetes.pdf')
