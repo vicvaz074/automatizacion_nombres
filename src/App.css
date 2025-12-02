@@ -435,22 +435,64 @@ button.ghost {
 
 .sheet-grid {
   display: grid;
-  gap: 1rem;
+  grid-template-columns: 1fr;
+  gap: 1.25rem;
+  width: 100%;
   justify-items: center;
+}
+
+.page--exporting {
+  background: #fff;
+}
+
+.page--exporting .sheet-grid {
+  grid-template-columns: 1fr;
+  gap: 1.5rem;
+  justify-items: center;
+}
+
+.page--exporting .sheet-pair {
+  width: 100%;
+  max-width: calc(2 * 215.9mm + 32px);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  column-gap: 1rem;
+  row-gap: 0;
+  align-items: start;
+}
+
+.page--exporting .print-sheet {
+  width: 215.9mm;
+  height: 279.4mm;
+  max-width: none;
+  background-size: cover;
+  box-shadow: none;
+  border-radius: 12px;
+}
+
+.page--exporting .print-sheet__label {
+  display: none;
+}
+
+.page--exporting .print-slot {
+  width: 100%;
+  height: 100%;
 }
 
 .sheet-pair {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+  align-items: start;
   justify-items: center;
-  gap: 0.75rem;
+  width: min(1180px, 100%);
+  margin: 0 auto;
 }
 
 .print-sheet {
   --sheet-width: 215.9mm;
   --sheet-height: 279.4mm;
   position: relative;
-  width: var(--sheet-width);
+  width: 100%;
   max-width: var(--sheet-width);
   height: var(--sheet-height);
   box-sizing: border-box;
