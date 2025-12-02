@@ -471,17 +471,9 @@ function App() {
       const imgData = canvas.toDataURL('image/png')
 
       if (index > 0) pdf.addPage()
-
-      // Ajustar la imagen para que cubra toda la hoja carta manteniendo la proporción
-      // y sin dejar márgenes en blanco aunque la plantilla original tenga otras medidas.
-      const { width: imgWidth, height: imgHeight } = pdf.getImageProperties(imgData)
-      const coverScale = Math.max(pageWidth / imgWidth, pageHeight / imgHeight)
-      const renderWidth = imgWidth * coverScale
-      const renderHeight = imgHeight * coverScale
-      const offsetX = (pageWidth - renderWidth) / 2
-      const offsetY = (pageHeight - renderHeight) / 2
-
-      pdf.addImage(imgData, 'PNG', offsetX, offsetY, renderWidth, renderHeight)
+      // Forzar al lienzo a ocupar toda la página carta para evitar recortes
+      // o márgenes generados por diferencias de proporción en la plantilla original.
+      pdf.addImage(imgData, 'PNG', 0, 0, pageWidth, pageHeight)
     }
 
     pdf.save('gafetes.pdf')
