@@ -278,6 +278,50 @@ function BadgeFace({ attendees, variant = 'front', template, layoutMode, positio
   )
 }
 
+function chunkIntoSheets(groups, perSheet = 4) {
+  const sheets = []
+  for (let i = 0; i < groups.length; i += perSheet) {
+    sheets.push(groups.slice(i, i + perSheet))
+  }
+  return sheets
+}
+
+function PrintSheet({
+  sheet,
+  variant,
+  template,
+  layoutMode,
+  positionAdjustments,
+  fontScale,
+  index,
+}) {
+  const placeholders = Array.from({ length: Math.max(0, 4 - sheet.length) })
+
+  return (
+    <section className={`print-sheet ${variant === 'back' ? 'print-sheet--back' : ''}`}>
+      <p className="print-sheet__label">
+        Hoja {index + 1} · {variant === 'front' ? 'Frente' : 'Reverso'}
+      </p>
+      {[...sheet, ...placeholders].map((group, slotIndex) => (
+        <div className="print-slot" key={`${variant}-${index}-${slotIndex}`}>
+          {group ? (
+            <BadgeFace
+              attendees={group}
+              variant={variant}
+              template={template}
+              layoutMode={layoutMode}
+              positionAdjustments={positionAdjustments}
+              fontScale={fontScale}
+            />
+          ) : (
+            <div className="print-slot__placeholder">Carga más nombres para completar esta hoja</div>
+          )}
+        </div>
+      ))}
+    </section>
+  )
+}
+
 function App() {
   const [attendees, setAttendees] = useState([])
   const [error, setError] = useState('')
@@ -290,6 +334,7 @@ function App() {
   const [editingIndex, setEditingIndex] = useState(0)
   const [objectUrls, setObjectUrls] = useState([])
   const [isExporting, setIsExporting] = useState(false)
+  const [quickSearch, setQuickSearch] = useState('')
 
   useEffect(
     () => () => {
@@ -324,6 +369,7 @@ function App() {
       setAttendees(parsed)
       setAttendeeOverrides({})
       setEditingIndex(0)
+      setQuickSearch('')
     } catch (err) {
       console.error(err)
       setError('No pudimos leer el archivo. Asegúrate de subir un Excel (.xlsx) con las columnas esperadas.')
@@ -348,6 +394,7 @@ function App() {
     setAttendees(buildAttendees(sampleRows))
     setAttendeeOverrides({})
     setEditingIndex(0)
+    setQuickSearch('')
     setError('')
   }
 
@@ -412,8 +459,11 @@ function App() {
     return groups
   }, [decoratedAttendees, layoutMode])
 
-  const totalSheets = useMemo(() => badgeGroups.length, [badgeGroups])
+  const sheets = useMemo(() => chunkIntoSheets(badgeGroups), [badgeGroups])
+  const totalSheets = useMemo(() => sheets.length, [sheets])
   const totalPeople = useMemo(() => decoratedAttendees.length, [decoratedAttendees])
+  const activeSheetIndex = useMemo(() => Math.floor(editingIndex / 4), [editingIndex])
+  const activeSheet = sheets[activeSheetIndex] || []
 
   const editingPerson = decoratedAttendees[editingIndex] || null
   const editingPositionLabel = decoratedAttendees.length ? `#${editingIndex + 1} de ${decoratedAttendees.length}` : 'Sin selección'
@@ -433,15 +483,19 @@ function App() {
     if (!badgeGroups.length || missingCustomTemplate) return
     setIsExporting(true)
 
-    const badges = Array.from(document.querySelectorAll('.badge'))
-    const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: [100, 100] })
+    const sheetsToExport = Array.from(document.querySelectorAll('.print-sheet'))
+    const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'letter' })
 
-    for (const [index, badge] of badges.entries()) {
+    for (const [index, sheet] of sheetsToExport.entries()) {
       // eslint-disable-next-line no-await-in-loop
-      const canvas = await html2canvas(badge, { scale: 2, useCORS: true, backgroundColor: '#fff' })
+      const canvas = await html2canvas(sheet, {
+        scale: 2,
+        useCORS: true,
+        backgroundColor: '#fff',
+      })
       const imgData = canvas.toDataURL('image/png')
       if (index > 0) pdf.addPage()
-      pdf.addImage(imgData, 'PNG', 0, 0, 100, 100)
+      pdf.addImage(imgData, 'PNG', 0, 0, 215.9, 279.4)
     }
 
     pdf.save('gafetes.pdf')
@@ -453,16 +507,40 @@ function App() {
     window.print()
   }
 
+  const handleQuickSelect = (value) => {
+    setQuickSearch(value)
+    if (!value.trim()) return
+
+    const normalized = value.toLowerCase()
+    const exactIndex = decoratedAttendees.findIndex((person, index) => {
+      const label = `${person.fullName || `Persona ${index + 1}`} · ${person.company || 'Sin empresa'}`
+      return label.toLowerCase() === normalized
+    })
+    if (exactIndex >= 0) {
+      setEditingIndex(exactIndex)
+      return
+    }
+
+    const fuzzyIndex = decoratedAttendees.findIndex(
+      (person) =>
+        (person.fullName || '').toLowerCase().includes(normalized) ||
+        (person.company || '').toLowerCase().includes(normalized)
+    )
+    if (fuzzyIndex >= 0) {
+      setEditingIndex(fuzzyIndex)
+    }
+  }
+
   return (
     <div className="page">
       <header className="hero">
         <div>
-          <p className="eyebrow">Plantilla 10cm x 10cm · Impresión a doble cara</p>
+          <p className="eyebrow">Plantilla carta · 4 gafetes por hoja · Impresión a doble cara</p>
           <h1>Generador de gafetes</h1>
           <p className="lead">
             Elige una plantilla, sube un Excel con las columnas <strong>Empresa</strong>, <strong>Apellido</strong> y{' '}
-            <strong>Nombre</strong> y personaliza la posición del texto. Puedes duplicar el mismo nombre en espejo o
-            imprimir dos nombres por hoja listos para doble cara.
+            <strong>Nombre</strong> y personaliza la posición del texto. Ahora cada hoja carta acomoda cuatro gafetes en
+            espejo y listos para impresión a doble cara sin desperdiciar papel.
           </p>
         </div>
         <div className="actions">
@@ -654,6 +732,26 @@ function App() {
                 ))}
               </select>
             </label>
+            <label className="control control--search">
+              <span>Buscar y editar rápido</span>
+              <input
+                type="search"
+                list="people-suggestions"
+                value={quickSearch}
+                onChange={(event) => handleQuickSelect(event.target.value)}
+                placeholder="Escribe un nombre o empresa"
+                disabled={!decoratedAttendees.length}
+              />
+              <datalist id="people-suggestions">
+                {decoratedAttendees.map((person, index) => (
+                  <option
+                    key={`${person.fullName}-${person.company}-${index}`}
+                    value={`${person.fullName || `Persona ${index + 1}`} · ${person.company || 'Sin empresa'}`}
+                  />
+                ))}
+              </datalist>
+              <span className="control__hint">Autocompleta y salta directo a la persona que necesitas.</span>
+            </label>
             <div className="inline-actions">
               <button
                 type="button"
@@ -778,27 +876,29 @@ function App() {
                   <div className="pill pill--neutral">{layoutMode === 'mirror' ? 'Modo espejo' : 'Modo doble'}</div>
                 </div>
                 <p className="helper">Observa cómo se verá cada lado sin salir de la edición individual.</p>
-                <div className="badge-pair badge-pair--compact">
+              <div className="badge-pair badge-pair--compact">
                   <div className="badge-preview">
-                    <p className="badge-preview__label">Frente</p>
-                    <BadgeFace
-                      attendees={activeBadgeGroup}
+                    <p className="badge-preview__label">Hoja activa · Frente</p>
+                    <PrintSheet
+                      sheet={activeSheet}
                       variant="front"
                       template={activeTemplate}
                       layoutMode={layoutMode}
                       positionAdjustments={positionAdjustments}
                       fontScale={fontScale}
+                      index={activeSheetIndex}
                     />
                   </div>
                   <div className="badge-preview">
-                    <p className="badge-preview__label">Reverso</p>
-                    <BadgeFace
-                      attendees={activeBadgeGroup}
+                    <p className="badge-preview__label">Hoja activa · Reverso</p>
+                    <PrintSheet
+                      sheet={activeSheet}
                       variant="back"
                       template={activeTemplate}
                       layoutMode={layoutMode}
                       positionAdjustments={positionAdjustments}
                       fontScale={fontScale}
+                      index={activeSheetIndex}
                     />
                   </div>
                 </div>
@@ -831,31 +931,32 @@ function App() {
         <div className="preview-info">
           <h2>Vista previa</h2>
           <p>
-            Ajusta los deslizadores hasta que el texto caiga en el lugar exacto de tu plantilla. En modo espejo la parte
-            inferior rota 180° para que coincida al imprimir y doblar; en modo doble se incluyen dos nombres por hoja,
-            se espejan para mantener la orientación y la siguiente página repite el par para que imprimas a doble cara.
+            Ajusta los deslizadores hasta que el texto caiga en el lugar exacto de tu plantilla. Cada hoja carta acomoda
+            4 gafetes simétricos y en espejo: la cara posterior rota el lienzo para alinearse al imprimir a doble cara.
           </p>
         </div>
         {!attendees.length && <p className="empty">Sube tu Excel o usa el ejemplo para comenzar.</p>}
         {missingCustomTemplate && <p className="empty">Sube ambos lados de la plantilla personalizada para generar la vista previa.</p>}
-        <div className="badge-grid">
-          {badgeGroups.map((group, index) => (
-            <div className="badge-pair" key={`${group.map((person) => person.fullName).join('-')}-${index}`}>
-              <BadgeFace
-                attendees={group}
+        <div className="sheet-grid">
+          {sheets.map((sheet, index) => (
+            <div className="sheet-pair" key={`sheet-${index}`}>
+              <PrintSheet
+                sheet={sheet}
                 variant="front"
                 template={activeTemplate}
                 layoutMode={layoutMode}
                 positionAdjustments={positionAdjustments}
                 fontScale={fontScale}
+                index={index}
               />
-              <BadgeFace
-                attendees={group}
+              <PrintSheet
+                sheet={sheet}
                 variant="back"
                 template={activeTemplate}
                 layoutMode={layoutMode}
                 positionAdjustments={positionAdjustments}
                 fontScale={fontScale}
+                index={index}
               />
             </div>
           ))}
