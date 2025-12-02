@@ -590,9 +590,10 @@ button.ghost {
 }
 
 .badge-pair--compact {
-  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-  width: 100%;
-  justify-items: stretch;
+  grid-template-columns: 1fr;
+  width: min(820px, 100%);
+  margin: 0 auto;
+  justify-items: center;
   align-items: start;
 }
 
