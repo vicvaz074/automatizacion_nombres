@@ -724,6 +724,8 @@ button.ghost {
   font-size: var(--name-size, 28pt);
   font-weight: 700;
   line-height: 1.1;
+  width: 100%;
+  max-width: 100%;
   word-break: break-word;
   overflow-wrap: anywhere;
   hyphens: auto;
@@ -735,6 +737,8 @@ button.ghost {
   font-size: var(--company-size, 18pt);
   font-weight: 400;
   line-height: 1.12;
+  width: 100%;
+  max-width: 100%;
   word-break: break-word;
   overflow-wrap: anywhere;
   hyphens: auto;
