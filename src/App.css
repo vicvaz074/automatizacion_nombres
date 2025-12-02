@@ -470,8 +470,9 @@ button.ghost {
   padding: 0;
   gap: 0;
   background-position: center;
-  background-size: 100% 100%;
+  background-size: cover;
   background-repeat: no-repeat;
+  image-rendering: optimizeQuality;
 }
 
 .print-sheet--back {
