@@ -712,6 +712,12 @@ code {
   .warning {
     display: none !important;
   }
+  .page--printing .print-sheet[data-has-content='false'] {
+    display: none !important;
+  }
+  .page--printing .sheet-pair {
+    page-break-after: always;
+  }
   .badge-grid {
     display: block;
   }

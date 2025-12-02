@@ -336,6 +336,7 @@ function App() {
   const [isExporting, setIsExporting] = useState(false)
   const [quickSearch, setQuickSearch] = useState('')
   const [highlightedSuggestion, setHighlightedSuggestion] = useState(null)
+  const [isPrinting, setIsPrinting] = useState(false)
 
   useEffect(
     () => () => {
@@ -492,7 +493,7 @@ function App() {
     try {
       await Promise.all([preloadImage(activeTemplate.front), preloadImage(activeTemplate.back)])
 
-      const sheetsToExport = Array.from(document.querySelectorAll('.preview .print-sheet')).filter(
+      const sheetsToExport = Array.from(document.querySelectorAll('.print-sheet')).filter(
         (sheet) => sheet.dataset.hasContent === 'true'
       )
       const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'letter' })
@@ -533,7 +534,11 @@ function App() {
 
   const handlePrint = () => {
     if (!badgeGroups.length || missingCustomTemplate) return
-    window.print()
+    setIsPrinting(true)
+    setTimeout(() => {
+      window.print()
+      setIsPrinting(false)
+    }, 50)
   }
 
   const handleQuickSelect = (value) => {
@@ -568,7 +573,7 @@ function App() {
   }
 
   return (
-    <div className="page">
+    <div className={`page ${isPrinting ? 'page--printing' : ''}`}>
       <header className="hero">
         <div>
           <p className="eyebrow">Plantilla carta · 4 gafetes por hoja · Impresión a doble cara</p>
