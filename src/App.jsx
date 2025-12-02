@@ -1,18 +1,23 @@
 import { useEffect, useMemo, useState } from 'react'
+import { GlobalWorkerOptions, getDocument } from 'pdfjs-dist'
 import * as XLSX from 'xlsx'
 import html2canvas from 'html2canvas'
 import jsPDF from 'jspdf'
 import './App.css'
 
-const FUTURA_STACK = "'Futura', 'Futura PT', 'Century Gothic', 'Arial', sans-serif"
+import pdfWorker from 'pdfjs-dist/build/pdf.worker.min.mjs?url'
 
-const DEFAULT_TEMPLATE_PATH_FRONT = encodeURI('/Plantilla_4_personas.png')
-const DEFAULT_TEMPLATE_PATH_BACK = encodeURI('/Plantilla_4_personas.png')
+const FUTURA_STACK = "'Futura', 'Futura PT', 'Century Gothic', 'Arial', sans-serif" 
+
+GlobalWorkerOptions.workerSrc = pdfWorker
+
+const DEFAULT_TEMPLATE_PATH_FRONT = encodeURI('/Plantilla_general.pdf')
+const DEFAULT_TEMPLATE_PATH_BACK = encodeURI('/Plantilla_general.pdf')
 
 const TEMPLATE_OPTIONS = [
   {
     id: 'sheet-letter',
-    label: 'Plantilla 4 personas (tamaño carta)',
+    label: 'Plantilla general en PDF (tamaño carta)',
     front: DEFAULT_TEMPLATE_PATH_FRONT,
     back: DEFAULT_TEMPLATE_PATH_BACK,
     layout: 'sheet',
@@ -71,6 +76,31 @@ function estimateLines(text, idealLineLength = 14) {
   }
 
   return Math.max(lines, Math.ceil(normalizeValue(text).length / (target + 2)))
+}
+
+async function renderPdfToImage(src, pageNumber = 1, scale = 2) {
+  const pdf = await getDocument(src).promise
+  const page = await pdf.getPage(pageNumber)
+  const viewport = page.getViewport({ scale })
+  const canvas = document.createElement('canvas')
+  const context = canvas.getContext('2d')
+  canvas.width = viewport.width
+  canvas.height = viewport.height
+
+  await page.render({ canvasContext: context, viewport }).promise
+  const dataUrl = canvas.toDataURL('image/png')
+
+  return dataUrl
+}
+
+function isPdfSource(src) {
+  return typeof src === 'string' && src.toLowerCase().endsWith('.pdf')
+}
+
+async function resolveTemplateSource(src) {
+  if (!src) return ''
+  if (!isPdfSource(src)) return src
+  return renderPdfToImage(src)
 }
 
 function getTypographyMetrics(fullName, company) {
@@ -295,6 +325,7 @@ function App() {
   const [attendees, setAttendees] = useState([])
   const [error, setError] = useState('')
   const [templateId, setTemplateId] = useState(TEMPLATE_OPTIONS[0].id)
+  const [resolvedTemplate, setResolvedTemplate] = useState(TEMPLATE_OPTIONS[0])
   const [customTemplate, setCustomTemplate] = useState({ front: '', back: '' })
   const [positionAdjustments, setPositionAdjustments] = useState({ vertical: 0, gap: 0, width: 0, horizontal: 0 })
   const [fontScale, setFontScale] = useState({ front: 1, back: 1 })
@@ -304,6 +335,7 @@ function App() {
   const [isExporting, setIsExporting] = useState(false)
   const [quickSearch, setQuickSearch] = useState('')
   const [highlightedSuggestion, setHighlightedSuggestion] = useState(null)
+  const [templateError, setTemplateError] = useState('')
 
   useEffect(
     () => () => {
@@ -398,9 +430,36 @@ function App() {
     return { ...selected, ...customTemplate }
   }, [customTemplate, templateId])
 
+  useEffect(() => {
+    let cancelled = false
+    setTemplateError('')
+
+    const resolveTemplate = async () => {
+      try {
+        const [front, back] = await Promise.all([
+          resolveTemplateSource(activeTemplate.front),
+          resolveTemplateSource(activeTemplate.back),
+        ])
+        if (cancelled) return
+        setResolvedTemplate({ ...activeTemplate, front, back })
+      } catch (err) {
+        console.error(err)
+        if (cancelled) return
+        setTemplateError('No pudimos procesar la plantilla en PDF. Prueba con otra o usa una imagen.')
+        setResolvedTemplate({ ...activeTemplate, front: '', back: '' })
+      }
+    }
+
+    resolveTemplate()
+
+    return () => {
+      cancelled = true
+    }
+  }, [activeTemplate])
+
   const missingCustomTemplate = useMemo(
-    () => activeTemplate.id === 'custom' && (!activeTemplate.front || !activeTemplate.back),
-    [activeTemplate]
+    () => resolvedTemplate.id === 'custom' && (!resolvedTemplate.front || !resolvedTemplate.back),
+    [resolvedTemplate]
   )
 
   const decoratedAttendees = useMemo(
@@ -857,7 +916,7 @@ function App() {
                     <PrintSheet
                       sheet={activeSheet}
                       variant="front"
-                      template={activeTemplate}
+                      template={resolvedTemplate}
                       positionAdjustments={positionAdjustments}
                       fontScale={fontScale}
                       index={activeSheetIndex}
@@ -868,7 +927,7 @@ function App() {
                     <PrintSheet
                       sheet={activeSheet}
                       variant="back"
-                      template={activeTemplate}
+                      template={resolvedTemplate}
                       positionAdjustments={positionAdjustments}
                       fontScale={fontScale}
                       index={activeSheetIndex}
@@ -884,6 +943,7 @@ function App() {
       </section>
 
       {error && <div className="alert">{error}</div>}
+      {templateError && <div className="alert">{templateError}</div>}
 
       <section className="status">
         <div>
@@ -916,7 +976,7 @@ function App() {
               <PrintSheet
                 sheet={sheet}
                 variant="front"
-                template={activeTemplate}
+                template={resolvedTemplate}
                 positionAdjustments={positionAdjustments}
                 fontScale={fontScale}
                 index={index}
@@ -924,7 +984,7 @@ function App() {
               <PrintSheet
                 sheet={sheet}
                 variant="back"
-                template={activeTemplate}
+                template={resolvedTemplate}
                 positionAdjustments={positionAdjustments}
                 fontScale={fontScale}
                 index={index}
