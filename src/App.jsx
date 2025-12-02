@@ -6,12 +6,14 @@ import './App.css'
 
 const FUTURA_STACK = "'Futura', 'Futura PT', 'Century Gothic', 'Arial', sans-serif"
 
+const DEFAULT_TEMPLATE_PATH = encodeURI('/Plantilla 4 personas.png')
+
 const TEMPLATE_OPTIONS = [
   {
     id: 'sheet-letter',
     label: 'Plantilla 4 personas (tamaño carta)',
-    front: '/Plantilla 4 personas.png',
-    back: '/Plantilla 4 personas.png',
+    front: DEFAULT_TEMPLATE_PATH,
+    back: DEFAULT_TEMPLATE_PATH,
     layout: 'sheet',
   },
   {
@@ -257,7 +259,8 @@ function PrintSheet({
   const placeholders = Array.from({ length: Math.max(0, 4 - sheet.length) })
   const useSheetTemplate = template.layout === 'sheet'
   const sheetTemplateSrc = variant === 'back' ? template.back : template.front
-  const sheetStyle = useSheetTemplate && sheetTemplateSrc ? { backgroundImage: `url(${sheetTemplateSrc})` } : undefined
+  const sheetBackgroundImage = sheetTemplateSrc ? `url("${sheetTemplateSrc}")` : ''
+  const sheetStyle = useSheetTemplate && sheetBackgroundImage ? { backgroundImage: sheetBackgroundImage } : undefined
 
   return (
     <section
