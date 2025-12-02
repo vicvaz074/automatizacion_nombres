@@ -907,28 +907,32 @@ function App() {
                   <div className="pill pill--neutral">Plantilla carta · 4 gafetes</div>
                 </div>
                 <p className="helper">Observa cómo se verá cada lado sin salir de la edición individual.</p>
-              <div className="badge-pair badge-pair--compact">
-                  <div className="badge-preview">
+                <div className="live-preview-grid">
+                  <div className="live-preview-card">
                     <p className="badge-preview__label">Hoja activa · Frente</p>
-                    <PrintSheet
-                      sheet={activeSheet}
-                      variant="front"
-                      template={activeTemplate}
-                      positionAdjustments={positionAdjustments}
-                      fontScale={fontScale}
-                      index={activeSheetIndex}
-                    />
+                    <div className="live-preview__sheet">
+                      <PrintSheet
+                        sheet={activeSheet}
+                        variant="front"
+                        template={activeTemplate}
+                        positionAdjustments={positionAdjustments}
+                        fontScale={fontScale}
+                        index={activeSheetIndex}
+                      />
+                    </div>
                   </div>
-                  <div className="badge-preview">
+                  <div className="live-preview-card">
                     <p className="badge-preview__label">Hoja activa · Reverso</p>
-                    <PrintSheet
-                      sheet={activeSheet}
-                      variant="back"
-                      template={activeTemplate}
-                      positionAdjustments={positionAdjustments}
-                      fontScale={fontScale}
-                      index={activeSheetIndex}
-                    />
+                    <div className="live-preview__sheet">
+                      <PrintSheet
+                        sheet={activeSheet}
+                        variant="back"
+                        template={activeTemplate}
+                        positionAdjustments={positionAdjustments}
+                        fontScale={fontScale}
+                        index={activeSheetIndex}
+                      />
+                    </div>
                   </div>
                 </div>
               </div>
@@ -957,35 +961,48 @@ function App() {
       </section>
 
       <section className="preview">
-        <div className="preview-info">
-          <h2>Vista previa</h2>
-          <p>
-            Ajusta los deslizadores hasta que el texto caiga en el lugar exacto de tu plantilla. Cada hoja carta acomoda
-            4 gafetes simétricos listos para imprimir frente y reverso con la misma orientación.
-          </p>
+        <div className="preview__header">
+          <div className="preview-info">
+            <h2>Vista previa</h2>
+            <p>
+              Ajusta los deslizadores hasta que el texto caiga en el lugar exacto de tu plantilla. Cada hoja carta acomoda
+              4 gafetes simétricos listos para imprimir frente y reverso con la misma orientación.
+            </p>
+          </div>
+          <div className="pill pill--neutral">Se actualiza en tiempo real</div>
         </div>
         {!attendees.length && <p className="empty">Sube tu Excel o usa el ejemplo para comenzar.</p>}
         {missingCustomTemplate && <p className="empty">Sube ambos lados de la plantilla personalizada para generar la vista previa.</p>}
-        <div className="sheet-grid">
+        <div className="preview__grid">
           {sheets.map((sheet, index) => (
-            <div className="sheet-pair" key={`sheet-${index}`}>
-              <PrintSheet
-                sheet={sheet}
-                variant="front"
-                template={activeTemplate}
-                positionAdjustments={positionAdjustments}
-                fontScale={fontScale}
-                index={index}
-              />
-              <PrintSheet
-                sheet={sheet}
-                variant="back"
-                template={activeTemplate}
-                positionAdjustments={positionAdjustments}
-                fontScale={fontScale}
-                index={index}
-              />
-            </div>
+            <article className="preview__pair" key={`sheet-${index}`}>
+              <div className="preview__sheet">
+                <p className="badge-preview__label">Hoja {index + 1} · Frente</p>
+                <div className="preview__canvas">
+                  <PrintSheet
+                    sheet={sheet}
+                    variant="front"
+                    template={activeTemplate}
+                    positionAdjustments={positionAdjustments}
+                    fontScale={fontScale}
+                    index={index}
+                  />
+                </div>
+              </div>
+              <div className="preview__sheet">
+                <p className="badge-preview__label">Hoja {index + 1} · Reverso</p>
+                <div className="preview__canvas">
+                  <PrintSheet
+                    sheet={sheet}
+                    variant="back"
+                    template={activeTemplate}
+                    positionAdjustments={positionAdjustments}
+                    fontScale={fontScale}
+                    index={index}
+                  />
+                </div>
+              </div>
+            </article>
           ))}
         </div>
       </section>
