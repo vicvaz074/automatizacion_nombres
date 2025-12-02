@@ -265,6 +265,18 @@ function chunkIntoSheets(groups, perSheet = 4) {
   return sheets
 }
 
+function buildSlots(sheet, variant) {
+  const order = variant === 'back' ? [1, 0, 3, 2] : [0, 1, 2, 3]
+  const arranged = Array(4).fill(null)
+
+  sheet.forEach((group, index) => {
+    const targetIndex = order[index] ?? index
+    arranged[targetIndex] = group
+  })
+
+  return arranged
+}
+
 function PrintSheet({
   sheet,
   variant,
@@ -273,21 +285,23 @@ function PrintSheet({
   fontScale,
   index,
 }) {
-  const placeholders = Array.from({ length: Math.max(0, 4 - sheet.length) })
   const useSheetTemplate = template.layout === 'sheet'
   const sheetTemplateSrc = variant === 'back' ? template.back : template.front
   const sheetBackgroundImage = sheetTemplateSrc ? `url("${sheetTemplateSrc}")` : ''
   const sheetStyle = useSheetTemplate && sheetBackgroundImage ? { backgroundImage: sheetBackgroundImage } : undefined
+  const slots = buildSlots(sheet, variant)
+  const hasContent = sheet.length > 0
 
   return (
     <section
       className={`print-sheet ${variant === 'back' ? 'print-sheet--back' : ''} ${useSheetTemplate ? 'print-sheet--full-template' : ''}`}
       style={sheetStyle}
+      data-has-content={hasContent}
     >
       <p className="print-sheet__label">
         Hoja {index + 1} · {variant === 'front' ? 'Frente' : 'Reverso'}
       </p>
-      {[...sheet, ...placeholders].map((group, slotIndex) => (
+      {slots.map((group, slotIndex) => (
         <div className="print-slot" key={`${variant}-${index}-${slotIndex}`}>
           {group ? (
             <BadgeFace
@@ -299,7 +313,9 @@ function PrintSheet({
               hideTemplateImage={useSheetTemplate}
             />
           ) : (
-            <div className="print-slot__placeholder">Carga más nombres para completar esta hoja</div>
+            <div className="print-slot__placeholder" aria-hidden>
+              Carga más nombres para completar esta hoja
+            </div>
           )}
         </div>
       ))}
@@ -476,7 +492,9 @@ function App() {
     try {
       await Promise.all([preloadImage(activeTemplate.front), preloadImage(activeTemplate.back)])
 
-      const sheetsToExport = Array.from(document.querySelectorAll('.preview .print-sheet'))
+      const sheetsToExport = Array.from(document.querySelectorAll('.preview .print-sheet')).filter(
+        (sheet) => sheet.dataset.hasContent === 'true'
+      )
       const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'letter' })
       const pageWidth = pdf.internal.pageSize.getWidth()
       const pageHeight = pdf.internal.pageSize.getHeight()
