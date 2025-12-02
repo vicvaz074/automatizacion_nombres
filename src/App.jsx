@@ -491,6 +491,7 @@ function App() {
     setError('')
 
     try {
+      await new Promise((resolve) => requestAnimationFrame(() => resolve()))
       await Promise.all([preloadImage(activeTemplate.front), preloadImage(activeTemplate.back)])
 
       const sheetsToExport = Array.from(document.querySelectorAll('.print-sheet')).filter(
@@ -573,7 +574,7 @@ function App() {
   }
 
   return (
-    <div className={`page ${isPrinting ? 'page--printing' : ''}`}>
+    <div className={`page ${isPrinting ? 'page--printing' : ''} ${isExporting ? 'page--exporting' : ''}`}>
       <header className="hero">
         <div>
           <p className="eyebrow">Plantilla carta · 4 gafetes por hoja · Impresión a doble cara</p>
