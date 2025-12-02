@@ -456,8 +456,10 @@ function App() {
     if (!badgeGroups.length || missingCustomTemplate) return
     setIsExporting(true)
 
-    const sheetsToExport = Array.from(document.querySelectorAll('.print-sheet'))
+    const sheetsToExport = Array.from(document.querySelectorAll('.preview .print-sheet'))
     const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'letter' })
+    const pageWidth = pdf.internal.pageSize.getWidth()
+    const pageHeight = pdf.internal.pageSize.getHeight()
 
     for (const [index, sheet] of sheetsToExport.entries()) {
       // eslint-disable-next-line no-await-in-loop
@@ -467,8 +469,13 @@ function App() {
         backgroundColor: '#fff',
       })
       const imgData = canvas.toDataURL('image/png')
+      const imgWidth = pageWidth
+      const imgHeight = (canvas.height * imgWidth) / canvas.width
+      const finalHeight = imgHeight > pageHeight ? pageHeight : imgHeight
+      const finalWidth = imgHeight > pageHeight ? (canvas.width * pageHeight) / canvas.height : imgWidth
+
       if (index > 0) pdf.addPage()
-      pdf.addImage(imgData, 'PNG', 0, 0, 215.9, 279.4)
+      pdf.addImage(imgData, 'PNG', 0, 0, finalWidth, finalHeight)
     }
 
     pdf.save('gafetes.pdf')
