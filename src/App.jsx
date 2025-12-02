@@ -212,19 +212,19 @@ function buildNameStyles(attendee, isBack, positionAdjustments, fontScale = 1) {
   }
 }
 
-function BadgeFace({ attendees, variant = 'front', template, positionAdjustments, fontScale }) {
+function BadgeFace({ attendees, variant = 'front', template, positionAdjustments, fontScale, hideTemplateImage = false }) {
   const isBack = variant === 'back'
-  const templateSrc = isBack ? template.back : template.front
+  const templateSrc = hideTemplateImage ? '' : isBack ? template.back : template.front
   const [first] = attendees
   const baseScale = isBack ? fontScale.back : fontScale.front
   const primaryScale = baseScale * (isBack ? first.fontScaleBack ?? 1 : first.fontScaleFront ?? 1)
   const primaryStyles = buildNameStyles(first, isBack, positionAdjustments, primaryScale)
 
   return (
-    <section className={`badge badge--${variant}`}>
+    <section className={`badge badge--${variant} ${templateSrc ? '' : 'badge--sheet-template'}`}>
       {templateSrc ? (
         <img className="badge__template" src={templateSrc} alt={`Plantilla ${variant}`} />
-      ) : (
+      ) : hideTemplateImage ? null : (
         <div className="badge__template badge__template--placeholder">Sube tu plantilla de {variant === 'front' ? 'frente' : 'reverso'}</div>
       )}
 
@@ -253,9 +253,15 @@ function PrintSheet({
   index,
 }) {
   const placeholders = Array.from({ length: Math.max(0, 4 - sheet.length) })
+  const useSheetTemplate = template.id === 'sheet-letter'
+  const sheetTemplateSrc = variant === 'back' ? template.back : template.front
+  const sheetStyle = useSheetTemplate && sheetTemplateSrc ? { backgroundImage: `url(${sheetTemplateSrc})` } : undefined
 
   return (
-    <section className={`print-sheet ${variant === 'back' ? 'print-sheet--back' : ''}`}>
+    <section
+      className={`print-sheet ${variant === 'back' ? 'print-sheet--back' : ''} ${useSheetTemplate ? 'print-sheet--full-template' : ''}`}
+      style={sheetStyle}
+    >
       <p className="print-sheet__label">
         Hoja {index + 1} · {variant === 'front' ? 'Frente' : 'Reverso'}
       </p>
@@ -265,9 +271,10 @@ function PrintSheet({
             <BadgeFace
               attendees={group}
               variant={variant}
-              template={template}
+              template={useSheetTemplate ? { ...template, front: '', back: '' } : template}
               positionAdjustments={positionAdjustments}
               fontScale={fontScale}
+              hideTemplateImage={useSheetTemplate}
             />
           ) : (
             <div className="print-slot__placeholder">Carga más nombres para completar esta hoja</div>
