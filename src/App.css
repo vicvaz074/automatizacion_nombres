@@ -189,10 +189,7 @@ button.ghost {
 }
 
 .individual-editor {
-  display: grid;
-  grid-template-columns: minmax(280px, 1fr) minmax(260px, 340px);
-  gap: 1.25rem;
-  align-items: start;
+  display: block;
 }
 
 .person-rail {
@@ -287,6 +284,10 @@ button.ghost {
   padding: 1rem;
   display: grid;
   gap: 0.35rem;
+}
+
+.person-preview--stacked {
+  margin-top: 1rem;
 }
 
 .person-preview__label {
@@ -485,6 +486,8 @@ button.ghost {
   justify-items: center;
   width: min(820px, 100%);
   margin: 0 auto;
+  break-inside: avoid;
+  page-break-inside: avoid;
 }
 
 .print-sheet {
@@ -760,7 +763,8 @@ code {
     display: none !important;
   }
   .page--printing .sheet-pair {
-    page-break-after: always;
+    break-inside: avoid;
+    page-break-inside: avoid;
   }
   .badge-grid {
     display: block;

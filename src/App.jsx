@@ -269,7 +269,7 @@ function preloadImage(src) {
   })
 }
 
-const EXPORT_SCALE = Math.max(3, window.devicePixelRatio * 2)
+const EXPORT_SCALE = Math.max(4, window.devicePixelRatio * 2.5)
 
 function chunkIntoSheets(groups, perSheet = 4) {
   const sheets = []
@@ -535,9 +535,8 @@ function App() {
       const pageHeight = pdf.internal.pageSize.getHeight()
 
       for (const [index, sheet] of sheetsToExport.entries()) {
-        const { width, height } = sheet.getBoundingClientRect()
-        const scaledWidth = Math.round(width)
-        const scaledHeight = Math.round(height)
+        const scaledWidth = Math.round(sheet.offsetWidth)
+        const scaledHeight = Math.round(sheet.offsetHeight)
 
         // eslint-disable-next-line no-await-in-loop
         const canvas = await html2canvas(sheet, {
@@ -552,9 +551,14 @@ function App() {
           scrollY: 0,
         })
         const imgData = canvas.toDataURL('image/png', 1)
+        const imgProps = pdf.getImageProperties(imgData)
+        const ratioHeight = (imgProps.height * pageWidth) / imgProps.width
+        const ratioWidth = (imgProps.width * pageHeight) / imgProps.height
+        const finalWidth = ratioHeight > pageHeight ? ratioWidth : pageWidth
+        const finalHeight = ratioHeight > pageHeight ? pageHeight : ratioHeight
 
         if (index > 0) pdf.addPage()
-        pdf.addImage(imgData, 'PNG', 0, 0, pageWidth, pageHeight)
+        pdf.addImage(imgData, 'PNG', 0, 0, finalWidth, finalHeight)
       }
 
       pdf.save('gafetes.pdf')
@@ -928,40 +932,40 @@ function App() {
                   <span className="control__hint">Ajusta aquí si la cara posterior se ve más cargada.</span>
                 </label>
               </div>
+            </div>
 
-              <div className="person-preview">
-                <div className="person-preview__header">
-                  <p className="person-preview__label">
-                    Vista previa en vivo de <strong>{editingPerson?.fullName || 'la persona seleccionada'}</strong>
-                  </p>
-                  <div className="pill pill--neutral">Plantilla carta · 4 gafetes</div>
-                </div>
-                <p className="helper">Observa cómo se verá cada lado sin salir de la edición individual.</p>
+            <div className="person-preview person-preview--stacked">
+              <div className="person-preview__header">
+                <p className="person-preview__label">
+                  Vista previa en vivo de <strong>{editingPerson?.fullName || 'la persona seleccionada'}</strong>
+                </p>
+                <div className="pill pill--neutral">Plantilla carta · 4 gafetes</div>
+              </div>
+              <p className="helper">Observa cómo se verá cada lado sin salir de la edición individual.</p>
               <div className="badge-pair badge-pair--compact">
-                  <div className="badge-preview">
-                    <p className="badge-preview__label">Hoja activa · Frente</p>
-                    <PrintSheet
-                      sheet={activeSheet}
-                      variant="front"
-                      template={activeTemplate}
-                      positionAdjustments={positionAdjustments}
-                      fontScale={fontScale}
-                      index={activeSheetIndex}
-                      uniformMetrics={uniformMetrics}
-                    />
-                  </div>
-                  <div className="badge-preview">
-                    <p className="badge-preview__label">Hoja activa · Reverso</p>
-                    <PrintSheet
-                      sheet={activeSheet}
-                      variant="back"
-                      template={activeTemplate}
-                      positionAdjustments={positionAdjustments}
-                      fontScale={fontScale}
-                      index={activeSheetIndex}
-                      uniformMetrics={uniformMetrics}
-                    />
-                  </div>
+                <div className="badge-preview">
+                  <p className="badge-preview__label">Hoja activa · Frente</p>
+                  <PrintSheet
+                    sheet={activeSheet}
+                    variant="front"
+                    template={activeTemplate}
+                    positionAdjustments={positionAdjustments}
+                    fontScale={fontScale}
+                    index={activeSheetIndex}
+                    uniformMetrics={uniformMetrics}
+                  />
+                </div>
+                <div className="badge-preview">
+                  <p className="badge-preview__label">Hoja activa · Reverso</p>
+                  <PrintSheet
+                    sheet={activeSheet}
+                    variant="back"
+                    template={activeTemplate}
+                    positionAdjustments={positionAdjustments}
+                    fontScale={fontScale}
+                    index={activeSheetIndex}
+                    uniformMetrics={uniformMetrics}
+                  />
                 </div>
               </div>
             </div>
