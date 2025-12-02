@@ -532,7 +532,7 @@ function App() {
       await Promise.all([preloadImage(activeTemplate.front), preloadImage(activeTemplate.back)])
       await new Promise((resolve) => setTimeout(resolve, 150))
 
-      const sheetsToExport = Array.from(document.querySelectorAll('.preview .print-sheet')).filter(
+      const sheetsToExport = Array.from(document.querySelectorAll('.sheet-grid .print-sheet')).filter(
         (sheet) => sheet.dataset.hasContent === 'true'
       )
       const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'letter' })

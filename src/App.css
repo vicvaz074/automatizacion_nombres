@@ -454,7 +454,7 @@ button.ghost {
 
 .page--exporting .sheet-grid {
   grid-template-columns: 1fr;
-  gap: 1.5rem;
+  gap: 0;
   justify-items: center;
 }
 
@@ -462,7 +462,7 @@ button.ghost {
   width: 100%;
   max-width: 215.9mm;
   grid-template-columns: 1fr;
-  gap: 1.25rem;
+  gap: 0;
   align-items: start;
 }
 
@@ -470,9 +470,13 @@ button.ghost {
   width: 215.9mm;
   height: 279.4mm;
   max-width: none;
+  background: white;
+  background-repeat: no-repeat;
+  background-position: center;
   background-size: cover;
   box-shadow: none;
-  border-radius: 12px;
+  border: none;
+  border-radius: 0;
 }
 
 .page--exporting .print-sheet__label {
@@ -482,6 +486,10 @@ button.ghost {
 .page--exporting .print-slot {
   width: 100%;
   height: 100%;
+}
+
+.page--exporting .badge {
+  border: none;
 }
 
 .sheet-pair {
