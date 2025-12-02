@@ -461,8 +461,6 @@ function App() {
     const pageWidth = pdf.internal.pageSize.getWidth()
     const pageHeight = pdf.internal.pageSize.getHeight()
 
-    const MM_PER_PX = 25.4 / 96
-
     for (const [index, sheet] of sheetsToExport.entries()) {
       // eslint-disable-next-line no-await-in-loop
       const canvas = await html2canvas(sheet, {
@@ -471,17 +469,13 @@ function App() {
         backgroundColor: '#fff',
       })
       const imgData = canvas.toDataURL('image/png')
-
-      const rawWidth = canvas.width * MM_PER_PX
-      const rawHeight = canvas.height * MM_PER_PX
-      const scaleToFit = Math.min(pageWidth / rawWidth, pageHeight / rawHeight)
-      const finalWidth = rawWidth * scaleToFit
-      const finalHeight = rawHeight * scaleToFit
-      const offsetX = (pageWidth - finalWidth) / 2
-      const offsetY = (pageHeight - finalHeight) / 2
+      const imgWidth = pageWidth
+      const imgHeight = (canvas.height * imgWidth) / canvas.width
+      const finalHeight = imgHeight > pageHeight ? pageHeight : imgHeight
+      const finalWidth = imgHeight > pageHeight ? (canvas.width * pageHeight) / canvas.height : imgWidth
 
       if (index > 0) pdf.addPage()
-      pdf.addImage(imgData, 'PNG', offsetX, offsetY, finalWidth, finalHeight, undefined, 'FAST')
+      pdf.addImage(imgData, 'PNG', 0, 0, finalWidth, finalHeight)
     }
 
     pdf.save('gafetes.pdf')
