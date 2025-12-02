@@ -345,6 +345,12 @@ button.ghost {
   gap: 0.35rem;
 }
 
+.control--toggle {
+  align-items: center;
+  grid-template-columns: auto 1fr;
+  gap: 0.6rem;
+}
+
 .pill-option {
   display: flex;
   gap: 0.5rem;
@@ -583,16 +589,29 @@ button.ghost {
   justify-items: center;
 }
 
+.badge-pair--compact {
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  width: 100%;
+  justify-items: stretch;
+  align-items: start;
+}
+
 .badge-preview {
   display: grid;
   gap: 0.25rem;
   justify-items: center;
+  width: 100%;
 }
 
 .badge-preview__label {
   margin: 0;
   color: var(--muted);
   font-size: 0.9rem;
+}
+
+.badge-preview .print-sheet {
+  width: 100%;
+  max-width: none;
 }
 
 @media (max-width: 1200px) {
@@ -765,6 +784,7 @@ code {
   .page--printing .sheet-pair {
     break-inside: avoid;
     page-break-inside: avoid;
+    gap: 0;
   }
   .badge-grid {
     display: block;
@@ -784,6 +804,12 @@ code {
     print-color-adjust: exact;
     border: none;
     box-shadow: none;
+  }
+  .page--printing .print-sheet {
+    margin: 0 auto;
+  }
+  .page--printing .sheet-grid {
+    gap: 0;
   }
   .print-sheet:not(:last-of-type) {
     break-after: page;

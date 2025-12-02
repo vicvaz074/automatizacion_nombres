@@ -269,7 +269,7 @@ function preloadImage(src) {
   })
 }
 
-const EXPORT_SCALE = Math.max(4, window.devicePixelRatio * 2.5)
+const EXPORT_SCALE = Math.max(5, window.devicePixelRatio * 3)
 
 function chunkIntoSheets(groups, perSheet = 4) {
   const sheets = []
@@ -368,6 +368,7 @@ function App() {
   const [quickSearch, setQuickSearch] = useState('')
   const [highlightedSuggestion, setHighlightedSuggestion] = useState(null)
   const [isPrinting, setIsPrinting] = useState(false)
+  const [useUniformScaling, setUseUniformScaling] = useState(false)
 
   useEffect(
     () => () => {
@@ -516,7 +517,10 @@ function App() {
     [decoratedAttendees, editingIndex]
   )
 
-  const uniformMetrics = useMemo(() => buildUniformMetrics(decoratedAttendees), [decoratedAttendees])
+  const uniformMetrics = useMemo(
+    () => (useUniformScaling ? buildUniformMetrics(decoratedAttendees) : null),
+    [decoratedAttendees, useUniformScaling]
+  )
 
   const handleDownloadPDF = async () => {
     if (!badgeGroups.length || missingCustomTemplate) return
@@ -526,8 +530,9 @@ function App() {
     try {
       await new Promise((resolve) => requestAnimationFrame(() => resolve()))
       await Promise.all([preloadImage(activeTemplate.front), preloadImage(activeTemplate.back)])
+      await new Promise((resolve) => setTimeout(resolve, 150))
 
-      const sheetsToExport = Array.from(document.querySelectorAll('.print-sheet')).filter(
+      const sheetsToExport = Array.from(document.querySelectorAll('.preview .print-sheet')).filter(
         (sheet) => sheet.dataset.hasContent === 'true'
       )
       const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'letter' })
@@ -549,6 +554,8 @@ function App() {
           windowHeight: scaledHeight,
           scrollX: 0,
           scrollY: 0,
+          imageTimeout: 0,
+          removeContainer: true,
         })
         const imgData = canvas.toDataURL('image/png', 1)
         const imgProps = pdf.getImageProperties(imgData)
@@ -702,6 +709,17 @@ function App() {
               <span className="control__value">{Math.round(fontScale.back * 100)}%</span>
             </label>
           </div>
+          <label className="control control--inline control--toggle">
+            <input
+              type="checkbox"
+              checked={useUniformScaling}
+              onChange={(event) => setUseUniformScaling(event.target.checked)}
+            />
+            <span>
+              Mantener el mismo tamaño para todos (útil cuando quieres que ningún nombre sobresalga, desactívalo para que los
+              controles globales y por persona surtan efecto).
+            </span>
+          </label>
         </div>
 
         <div>
