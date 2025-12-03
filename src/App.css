@@ -848,6 +848,10 @@ button.ghost.danger {
   transform-origin: center;
 }
 
+.badge--jornada .names {
+  gap: calc(var(--names-gap, 2.5mm) + 0.4mm);
+}
+
 .print-sheet--full-template .badge--sheet-template .names {
   inset: 0;
   top: 50%;
@@ -885,6 +889,12 @@ button.ghost.danger {
   overflow-wrap: anywhere;
   hyphens: auto;
   text-wrap: balance;
+}
+
+.name span,
+.company span {
+  display: block;
+  width: 100%;
 }
 
 .company {

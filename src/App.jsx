@@ -109,6 +109,17 @@ function extractSingleFirstName(rawFirstName) {
   return toTitleCase(first || '')
 }
 
+function splitIntoLines(text, wordsPerLine = 2) {
+  const words = normalizeValue(text).split(/\s+/).filter(Boolean)
+  if (!words.length) return ['']
+
+  const lines = []
+  for (let i = 0; i < words.length; i += wordsPerLine) {
+    lines.push(words.slice(i, i + wordsPerLine).join(' '))
+  }
+  return lines
+}
+
 function calculateFontSize(text, { baseSize, minSize, maxChars }) {
   const length = normalizeValue(text).length
   if (!length) return baseSize
@@ -304,16 +315,24 @@ function BadgeFace({
   fontScale,
   hideTemplateImage = false,
   uniformMetrics,
+  rowOffset = 0,
+  isJornada = false,
 }) {
   const isBack = variant === 'back'
   const templateSrc = hideTemplateImage ? '' : isBack ? template.back : template.front
   const [first] = attendees
   const baseScale = isBack ? fontScale.back : fontScale.front
   const primaryScale = baseScale * (isBack ? first.fontScaleBack ?? 1 : first.fontScaleFront ?? 1)
-  const primaryStyles = buildNameStyles(first, isBack, positionAdjustments, primaryScale, uniformMetrics)
+  const mergedAdjustments = {
+    ...positionAdjustments,
+    vertical: positionAdjustments.vertical + rowOffset,
+  }
+  const primaryStyles = buildNameStyles(first, isBack, mergedAdjustments, primaryScale, uniformMetrics)
+  const nameLines = splitIntoLines(first.fullName || 'Nombre Apellido')
+  const companyLines = splitIntoLines(first.company || 'Empresa')
 
   return (
-    <section className={`badge badge--${variant} ${templateSrc ? '' : 'badge--sheet-template'}`}>
+    <section className={`badge badge--${variant} ${isJornada ? 'badge--jornada' : ''} ${templateSrc ? '' : 'badge--sheet-template'}`}>
       {templateSrc ? (
         <img className="badge__template" src={templateSrc} alt={`Plantilla ${variant}`} />
       ) : hideTemplateImage ? null : (
@@ -321,8 +340,16 @@ function BadgeFace({
       )}
 
       <div className="names" style={primaryStyles}>
-        <p className="name">{first.fullName || 'Nombre Apellido'}</p>
-        <p className="company">{first.company || 'Empresa'}</p>
+        <p className="name">
+          {nameLines.map((line, index) => (
+            <span key={`name-${index}`}>{line}</span>
+          ))}
+        </p>
+        <p className="company">
+          {companyLines.map((line, index) => (
+            <span key={`company-${index}`}>{line}</span>
+          ))}
+        </p>
       </div>
     </section>
   )
@@ -396,10 +423,14 @@ function PrintSheet({
   const sheetBackgroundImage = sheetTemplateSrc ? `url("${sheetTemplateSrc}")` : ''
   const columns = template?.grid?.columns || 2
   const rows = template?.grid?.rows || Math.ceil((template?.perSheet || sheet.length || 4) / columns)
+  const isJornadaTemplate = (template?.id || '').includes('jornada') || template?.perSheet === 8
   const sheetStyle = {
     gridTemplateColumns: `repeat(${columns}, 1fr)`,
     gridTemplateRows: `repeat(${rows}, 1fr)`,
     ...(template?.grid?.gap && !useSheetTemplate ? { gap: template.grid.gap } : {}),
+    ...(isJornadaTemplate
+      ? { alignContent: 'center', justifyItems: 'center', padding: '16mm 14mm', rowGap: template?.grid?.gap || '6mm' }
+      : {}),
     ...(useSheetTemplate && sheetBackgroundImage ? { backgroundImage: sheetBackgroundImage } : {}),
   }
   const slots = buildSlots(sheet, variant, template)
@@ -414,25 +445,32 @@ function PrintSheet({
       <p className="print-sheet__label">
         Hoja {index + 1} · {variant === 'front' ? 'Frente' : 'Reverso'}
       </p>
-      {slots.map((group, slotIndex) => (
-        <div className="print-slot" key={`${variant}-${index}-${slotIndex}`}>
-          {group ? (
-            <BadgeFace
-              attendees={group}
-              variant={variant}
-              template={useSheetTemplate ? { ...template, front: '', back: '' } : template}
-              positionAdjustments={positionAdjustments}
-              fontScale={fontScale}
-              uniformMetrics={uniformMetrics}
-              hideTemplateImage={useSheetTemplate}
-            />
-          ) : (
-            <div className="print-slot__placeholder" aria-hidden>
-              Carga más nombres para completar esta hoja
-            </div>
-          )}
-        </div>
-      ))}
+      {slots.map((group, slotIndex) => {
+        const rowIndex = Math.floor(slotIndex / columns)
+        const rowOffset = isJornadaTemplate ? (rowIndex === 0 ? 4 : rowIndex === rows - 1 ? -4 : 0) : 0
+
+        return (
+          <div className="print-slot" key={`${variant}-${index}-${slotIndex}`}>
+            {group ? (
+              <BadgeFace
+                attendees={group}
+                variant={variant}
+                template={useSheetTemplate ? { ...template, front: '', back: '' } : template}
+                positionAdjustments={positionAdjustments}
+                fontScale={fontScale}
+                uniformMetrics={uniformMetrics}
+                hideTemplateImage={useSheetTemplate}
+                rowOffset={rowOffset}
+                isJornada={isJornadaTemplate}
+              />
+            ) : (
+              <div className="print-slot__placeholder" aria-hidden>
+                Carga más nombres para completar esta hoja
+              </div>
+            )}
+          </div>
+        )
+      })}
     </section>
   )
 }
@@ -927,7 +965,7 @@ function App() {
               aria-selected={!isPersonMode}
             >
               <div className="mode-card__header">
-                <span className="pill pill--neutral">16 por hoja</span>
+                <span className="pill pill--neutral">8 por hoja</span>
                 {!isPersonMode && <span className="pill pill--accent">Activo</span>}
               </div>
               <h3>Gafetes Jornada</h3>
