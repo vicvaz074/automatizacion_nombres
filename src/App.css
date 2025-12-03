@@ -874,7 +874,7 @@ button.ghost.danger {
   gap: calc(var(--names-gap, 2.5mm) + 0.4mm);
 }
 
-.print-sheet--full-template .badge--sheet-template .names {
+.print-sheet--full-template .badge--sheet-template:not(.badge--jornada) .names {
   inset: 0;
   top: 50%;
   left: 50%;

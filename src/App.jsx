@@ -306,6 +306,15 @@ function buildNameStyles(attendee, isBack, positionAdjustments, fontScale = 1, u
   }
 }
 
+function mergePositionAdjustments(base, extras = {}) {
+  return {
+    vertical: (base?.vertical || 0) + (extras.vertical || 0),
+    gap: (base?.gap || 0) + (extras.gap || 0),
+    width: (base?.width || 0) + (extras.width || 0),
+    horizontal: (base?.horizontal || 0) + (extras.horizontal || 0),
+  }
+}
+
 function BadgeFace({
   attendees,
   variant = 'front',
@@ -416,6 +425,7 @@ function PrintSheet({
   fontScale,
   index,
   uniformMetrics,
+  rowPositionAdjustments = [],
 }) {
   const useSheetTemplate = template.layout === 'sheet'
   const sheetTemplateSrc = variant === 'back' ? template.back : template.front
@@ -454,9 +464,10 @@ function PrintSheet({
         const topRowOffset = 6
         const bottomRowOffset = -6
         const jornadaRowOffsets = [topRowOffset, -5.5, -18, -21]
-        const rowOffset = isJornadaTemplate
-          ? jornadaRowOffsets[rowIndex] ?? 0
-          : 0
+        const rowOffset = isJornadaTemplate ? jornadaRowOffsets[rowIndex] ?? 0 : 0
+        const rowAdjustments = isJornadaTemplate
+          ? mergePositionAdjustments(positionAdjustments, rowPositionAdjustments[rowIndex])
+          : positionAdjustments
 
         return (
           <div className="print-slot" key={`${variant}-${index}-${slotIndex}`}>
@@ -465,7 +476,7 @@ function PrintSheet({
                 attendees={group}
                 variant={variant}
                 template={useSheetTemplate ? { ...template, front: '', back: '' } : template}
-                positionAdjustments={positionAdjustments}
+                positionAdjustments={rowAdjustments}
                 fontScale={fontScale}
                 uniformMetrics={uniformMetrics}
                 hideTemplateImage={useSheetTemplate}
@@ -497,6 +508,10 @@ function App() {
     [MODES.JORNADA]: { front: '', back: '' },
   })
   const [positionAdjustments, setPositionAdjustments] = useState({ vertical: 0, gap: 0, width: 0, horizontal: 0 })
+  const [rowPositionAdjustments, setRowPositionAdjustments] = useState(
+    Array.from({ length: 4 }, () => ({ vertical: 0, gap: 0, width: 0, horizontal: 0 }))
+  )
+  const [activeRowAdjustment, setActiveRowAdjustment] = useState(0)
   const [fontScale, setFontScale] = useState({ front: 1, back: 1 })
   const [attendeeOverrides, setAttendeeOverrides] = useState({})
   const [editingIndex, setEditingIndex] = useState(0)
@@ -535,6 +550,8 @@ function App() {
   const isPersonMode = activeMode === MODES.PERSONIFICADORES
   const isJornadaMode = activeMode === MODES.JORNADA
   const perSheetLabel = `${perSheet} gafetes por hoja`
+  const selectedRowAdjustments =
+    rowPositionAdjustments[activeRowAdjustment] || { vertical: 0, gap: 0, width: 0, horizontal: 0 }
 
   useEffect(
     () => () => {
@@ -749,6 +766,18 @@ function App() {
 
   const updatePosition = (field, value) => {
     setPositionAdjustments((prev) => ({ ...prev, [field]: value }))
+  }
+
+  const updateRowPosition = (rowIndex, field, value) => {
+    setRowPositionAdjustments((prev) =>
+      prev.map((row, index) => (index === rowIndex ? { ...row, [field]: value } : row))
+    )
+  }
+
+  const resetRowPosition = (rowIndex) => {
+    setRowPositionAdjustments((prev) =>
+      prev.map((row, index) => (index === rowIndex ? { vertical: 0, gap: 0, width: 0, horizontal: 0 } : row))
+    )
   }
 
   const updateFontScale = (side, value) => {
@@ -1270,6 +1299,77 @@ function App() {
               <span className="control__value">{positionAdjustments.horizontal} mm</span>
             </label>
           </div>
+          {isJornadaMode && (
+            <div className="panel__block">
+              <p className="block__title">Ajustes por fila (Gafetes Jornada)</p>
+              <p className="helper">Mueve solo la fila seleccionada sin alterar el resto de la hoja.</p>
+              <div className="controls controls--inline">
+                <label className="control">
+                  <span>Fila a ajustar</span>
+                  <select value={activeRowAdjustment} onChange={(event) => setActiveRowAdjustment(Number(event.target.value))}>
+                    {[0, 1, 2, 3].map((row) => (
+                      <option key={`row-${row}`} value={row}>
+                        Fila {row + 1}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <button type="button" className="ghost" onClick={() => resetRowPosition(activeRowAdjustment)}>
+                  Reiniciar fila
+                </button>
+              </div>
+              <div className="controls grid">
+                <label className="control">
+                  <span>Desplazamiento vertical (fila {activeRowAdjustment + 1})</span>
+                  <input
+                    type="range"
+                    min="-10"
+                    max="10"
+                    step="0.5"
+                    value={selectedRowAdjustments.vertical}
+                    onChange={(event) => updateRowPosition(activeRowAdjustment, 'vertical', Number(event.target.value))}
+                  />
+                  <span className="control__value">{selectedRowAdjustments.vertical} mm</span>
+                </label>
+                <label className="control">
+                  <span>Separación nombre/empresa (fila {activeRowAdjustment + 1})</span>
+                  <input
+                    type="range"
+                    min="-5"
+                    max="10"
+                    step="0.5"
+                    value={selectedRowAdjustments.gap}
+                    onChange={(event) => updateRowPosition(activeRowAdjustment, 'gap', Number(event.target.value))}
+                  />
+                  <span className="control__value">{selectedRowAdjustments.gap} mm</span>
+                </label>
+                <label className="control">
+                  <span>Ancho del bloque de texto (fila {activeRowAdjustment + 1})</span>
+                  <input
+                    type="range"
+                    min="-10"
+                    max="10"
+                    step="0.5"
+                    value={selectedRowAdjustments.width}
+                    onChange={(event) => updateRowPosition(activeRowAdjustment, 'width', Number(event.target.value))}
+                  />
+                  <span className="control__value">{selectedRowAdjustments.width} mm</span>
+                </label>
+                <label className="control">
+                  <span>Desplazamiento horizontal (fila {activeRowAdjustment + 1})</span>
+                  <input
+                    type="range"
+                    min="-10"
+                    max="10"
+                    step="0.5"
+                    value={selectedRowAdjustments.horizontal}
+                    onChange={(event) => updateRowPosition(activeRowAdjustment, 'horizontal', Number(event.target.value))}
+                  />
+                  <span className="control__value">{selectedRowAdjustments.horizontal} mm</span>
+                </label>
+              </div>
+            </div>
+          )}
         </div>
       </section>
 
@@ -1469,6 +1569,7 @@ function App() {
                     variant="front"
                     template={activeTemplate}
                     positionAdjustments={positionAdjustments}
+                    rowPositionAdjustments={rowPositionAdjustments}
                     fontScale={fontScale}
                     index={activeSheetIndex}
                     uniformMetrics={uniformMetrics}
@@ -1482,6 +1583,7 @@ function App() {
                       variant="back"
                       template={activeTemplate}
                       positionAdjustments={positionAdjustments}
+                      rowPositionAdjustments={rowPositionAdjustments}
                       fontScale={fontScale}
                       index={activeSheetIndex}
                       uniformMetrics={uniformMetrics}
@@ -1532,6 +1634,7 @@ function App() {
                 variant="front"
                 template={activeTemplate}
                 positionAdjustments={positionAdjustments}
+                rowPositionAdjustments={rowPositionAdjustments}
                 fontScale={fontScale}
                 index={index}
                 uniformMetrics={uniformMetrics}
@@ -1542,6 +1645,7 @@ function App() {
                   variant="back"
                   template={activeTemplate}
                   positionAdjustments={positionAdjustments}
+                  rowPositionAdjustments={rowPositionAdjustments}
                   fontScale={fontScale}
                   index={index}
                   uniformMetrics={uniformMetrics}
@@ -1558,6 +1662,7 @@ function App() {
                 variant="front"
                 template={activeTemplate}
                 positionAdjustments={positionAdjustments}
+                rowPositionAdjustments={rowPositionAdjustments}
                 fontScale={fontScale}
                 index={index}
                 uniformMetrics={uniformMetrics}
@@ -1568,6 +1673,7 @@ function App() {
                   variant="back"
                   template={activeTemplate}
                   positionAdjustments={positionAdjustments}
+                  rowPositionAdjustments={rowPositionAdjustments}
                   fontScale={fontScale}
                   index={index}
                   uniformMetrics={uniformMetrics}
