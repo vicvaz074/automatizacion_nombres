@@ -981,6 +981,9 @@ code {
   .page--printing .print-sheet[data-has-content='false'] {
     display: none !important;
   }
+  .page--printing .sheet-grid--export {
+    display: none !important;
+  }
   .page--printing .sheet-pair {
     break-inside: avoid;
     page-break-inside: avoid;
