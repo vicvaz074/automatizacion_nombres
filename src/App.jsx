@@ -8,24 +8,57 @@ const FUTURA_STACK = "'Futura', 'Futura PT', 'Century Gothic', 'Arial', sans-ser
 const DEFAULT_TEMPLATE_PATH = encodeURI('/Plantilla_4_personas.png')
 const DEFAULT_TEMPLATE_PATH_FRONT = DEFAULT_TEMPLATE_PATH
 const DEFAULT_TEMPLATE_PATH_BACK = DEFAULT_TEMPLATE_PATH
+const JORNADA_TEMPLATE_PATH = encodeURI('/Gafetes_jornada.png')
 const COMPANY_FONT_BOOST = 1.12
 
-const TEMPLATE_OPTIONS = [
-  {
-    id: 'sheet-letter',
-    label: 'Plantilla general (tamaño carta)',
-    front: DEFAULT_TEMPLATE_PATH_FRONT,
-    back: DEFAULT_TEMPLATE_PATH_BACK,
-    layout: 'sheet',
+const MODE_CONFIGS = {
+  personificadores: {
+    id: 'personificadores',
+    title: 'Personificadores',
+    description: 'Genera gafetes con el flujo actual optimizado y controles finos.',
+    templates: [
+      {
+        id: 'sheet-letter',
+        label: 'Plantilla general (tamaño carta)',
+        front: DEFAULT_TEMPLATE_PATH_FRONT,
+        back: DEFAULT_TEMPLATE_PATH_BACK,
+        layout: 'sheet',
+      },
+      {
+        id: 'custom',
+        label: 'Usar mi propia plantilla',
+        front: '',
+        back: '',
+        layout: 'sheet',
+      },
+    ],
+    perSheet: 4,
+    backOrder: [1, 0, 3, 2],
   },
-  {
-    id: 'custom',
-    label: 'Usar mi propia plantilla',
-    front: '',
-    back: '',
-    layout: 'sheet',
+  gafetes: {
+    id: 'gafetes',
+    title: 'Gafetes Jornada',
+    description: 'Versión para jornadas con plantilla vertical (2 columnas × 4 filas).',
+    templates: [
+      {
+        id: 'jornada',
+        label: 'Plantilla jornada',
+        front: JORNADA_TEMPLATE_PATH,
+        back: JORNADA_TEMPLATE_PATH,
+        layout: 'tall-sheet',
+      },
+      {
+        id: 'custom',
+        label: 'Usar mi propia plantilla',
+        front: '',
+        back: '',
+        layout: 'tall-sheet',
+      },
+    ],
+    perSheet: 8,
+    backOrder: [1, 0, 3, 2, 5, 4, 7, 6],
   },
-]
+}
 
 const demoRows = [
   { company: 'davara Abogados', lastName: 'Rangel', firstName: 'María' },
@@ -37,6 +70,14 @@ const demoRows = [
 function normalizeValue(value) {
   if (value === undefined || value === null) return ''
   return String(value).trim()
+}
+
+function titleCase(value) {
+  return normalizeValue(value)
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+    .join(' ')
 }
 
 function calculateFontSize(text, { baseSize, minSize, maxChars }) {
@@ -178,24 +219,34 @@ function getTypographyMetrics(fullName, company) {
   return { nameFontSize, companyFontSize: boostedCompanyFontSize, namesGap, namesOffset, namesWidth }
 }
 
-function buildAttendees(rows) {
-  return rows
-    .map((row) => {
-      const company = normalizeValue(row['Empresa'])
-      const rawFirstName = normalizeValue(row['Nombre'])
-      const rawLastName = normalizeValue(row['Apellido'])
+function parsePerson(row) {
+  const company = titleCase(row['Empresa'])
+  const rawFirstName = normalizeValue(row['Nombre'])
+  const rawLastName = normalizeValue(row['Apellido'])
 
-      const [firstName = ''] = rawFirstName.split(/\s+/).filter(Boolean)
-      const [lastName = ''] = rawLastName.split(/\s+/).filter(Boolean)
-      if (!company && !firstName && !lastName) return null
-      return {
-        company,
-        firstName,
-        lastName,
-        fullName: `${firstName}${firstName && lastName ? ' ' : ''}${lastName}`.trim(),
-      }
-    })
-    .filter(Boolean)
+  const [firstNameWord = ''] = rawFirstName.split(/\s+/).filter(Boolean)
+  const lastWords = rawLastName.split(/\s+/).filter(Boolean)
+  let pickedLastName = lastWords[0] || ''
+
+  if (pickedLastName && pickedLastName.length <= 3 && lastWords[1]) {
+    pickedLastName = `${pickedLastName} ${lastWords[1]}`
+  }
+
+  const firstName = titleCase(firstNameWord)
+  const lastName = titleCase(pickedLastName)
+
+  if (!company && !firstName && !lastName) return null
+
+  return {
+    company,
+    firstName,
+    lastName,
+    fullName: `${firstName}${firstName && lastName ? ' ' : ''}${lastName}`.trim(),
+  }
+}
+
+function buildAttendees(rows) {
+  return rows.map(parsePerson).filter(Boolean)
 }
 
 function buildNameStyles(attendee, isBack, positionAdjustments, fontScale = 1, uniformMetrics) {
@@ -282,12 +333,12 @@ function chunkIntoSheets(groups, perSheet = 4) {
   return sheets
 }
 
-function buildSlots(sheet, variant) {
-  const order = variant === 'back' ? [1, 0, 3, 2] : [0, 1, 2, 3]
-  const arranged = Array(4).fill(null)
+function buildSlots(sheet, variant, backOrder) {
+  const order = variant === 'back' ? backOrder : null
+  const arranged = Array(Math.max(sheet.length, order ? order.length : sheet.length)).fill(null)
 
   sheet.forEach((group, index) => {
-    const targetIndex = order[index] ?? index
+    const targetIndex = order?.[index] ?? index
     arranged[targetIndex] = group
   })
 
@@ -317,17 +368,19 @@ function PrintSheet({
   fontScale,
   index,
   uniformMetrics,
+  layoutConfig,
 }) {
-  const useSheetTemplate = template.layout === 'sheet'
+  const useSheetTemplate = template.layout === 'sheet' || template.layout === 'tall-sheet'
   const sheetTemplateSrc = variant === 'back' ? template.back : template.front
   const sheetBackgroundImage = sheetTemplateSrc ? `url("${sheetTemplateSrc}")` : ''
   const sheetStyle = useSheetTemplate && sheetBackgroundImage ? { backgroundImage: sheetBackgroundImage } : undefined
-  const slots = buildSlots(sheet, variant)
+  const slots = buildSlots(sheet, variant, layoutConfig?.backOrder || [1, 0, 3, 2])
   const hasContent = sheet.length > 0
+  const layoutClass = template.layout === 'tall-sheet' || (layoutConfig?.perSheet || 4) > 4 ? 'print-sheet--tall' : ''
 
   return (
     <section
-      className={`print-sheet ${variant === 'back' ? 'print-sheet--back' : ''} ${useSheetTemplate ? 'print-sheet--full-template' : ''}`}
+      className={`print-sheet ${variant === 'back' ? 'print-sheet--back' : ''} ${useSheetTemplate ? 'print-sheet--full-template' : ''} ${layoutClass}`}
       style={sheetStyle}
       data-has-content={hasContent}
     >
@@ -357,10 +410,29 @@ function PrintSheet({
   )
 }
 
+function loadSavedLists(mode) {
+  try {
+    const raw = localStorage.getItem(`badge-lists-${mode}`)
+    return raw ? JSON.parse(raw) : []
+  } catch (err) {
+    console.error(err)
+    return []
+  }
+}
+
+function persistSavedLists(mode, lists) {
+  try {
+    localStorage.setItem(`badge-lists-${mode}`, JSON.stringify(lists))
+  } catch (err) {
+    console.error(err)
+  }
+}
+
 function App() {
+  const [mode, setMode] = useState('personificadores')
   const [attendees, setAttendees] = useState([])
   const [error, setError] = useState('')
-  const [templateId, setTemplateId] = useState(TEMPLATE_OPTIONS[0].id)
+  const [templateId, setTemplateId] = useState(MODE_CONFIGS.personificadores.templates[0].id)
   const [customTemplate, setCustomTemplate] = useState({ front: '', back: '' })
   const [positionAdjustments, setPositionAdjustments] = useState({ vertical: 0, gap: 0, width: 0, horizontal: 0 })
   const [fontScale, setFontScale] = useState({ front: 1, back: 1 })
@@ -372,6 +444,12 @@ function App() {
   const [highlightedSuggestion, setHighlightedSuggestion] = useState(null)
   const [isPrinting, setIsPrinting] = useState(false)
   const [useUniformScaling, setUseUniformScaling] = useState(false)
+  const [savedLists, setSavedLists] = useState(() => loadSavedLists('personificadores'))
+  const [listName, setListName] = useState('')
+  const [manualForm, setManualForm] = useState({ company: '', firstName: '', lastName: '' })
+  const [listFilter, setListFilter] = useState('')
+  const [workspaceMemory, setWorkspaceMemory] = useState({ personificadores: null, gafetes: null })
+  const [manualEditingIndex, setManualEditingIndex] = useState(null)
 
   useEffect(
     () => () => {
@@ -387,6 +465,76 @@ function App() {
       return prev
     })
   }, [attendees.length])
+
+  const templateOptions = useMemo(() => MODE_CONFIGS[mode].templates, [mode])
+
+  const captureWorkspace = useMemo(
+    () => () => ({
+      attendees,
+      attendeeOverrides,
+      editingIndex,
+      quickSearch,
+      highlightedSuggestion,
+      templateId,
+      customTemplate,
+      positionAdjustments,
+      fontScale,
+      useUniformScaling,
+      savedLists,
+      listName,
+      manualForm,
+      listFilter,
+      manualEditingIndex,
+    }),
+    [attendees, attendeeOverrides, customTemplate, editingIndex, fontScale, highlightedSuggestion, listFilter, listName, manualEditingIndex, manualForm, positionAdjustments, quickSearch, savedLists, templateId, useUniformScaling]
+  )
+
+  const applyWorkspace = (workspace) => {
+    if (!workspace) return
+    setAttendees(workspace.attendees)
+    setAttendeeOverrides(workspace.attendeeOverrides)
+    setEditingIndex(workspace.editingIndex)
+    setQuickSearch(workspace.quickSearch)
+    setHighlightedSuggestion(workspace.highlightedSuggestion)
+    setTemplateId(workspace.templateId)
+    setCustomTemplate(workspace.customTemplate)
+    setPositionAdjustments(workspace.positionAdjustments)
+    setFontScale(workspace.fontScale)
+    setUseUniformScaling(workspace.useUniformScaling)
+    setSavedLists(workspace.savedLists)
+    setListName(workspace.listName)
+    setManualForm(workspace.manualForm)
+    setListFilter(workspace.listFilter)
+    setManualEditingIndex(workspace.manualEditingIndex)
+  }
+
+  const switchMode = (nextMode) => {
+    setWorkspaceMemory((prev) => ({ ...prev, [mode]: captureWorkspace() }))
+    const stored = workspaceMemory[nextMode]
+    if (stored) {
+      applyWorkspace(stored)
+    } else {
+      setAttendees([])
+      setAttendeeOverrides({})
+      setEditingIndex(0)
+      setQuickSearch('')
+      setHighlightedSuggestion(null)
+      setTemplateId(MODE_CONFIGS[nextMode].templates[0].id)
+      setCustomTemplate({ front: '', back: '' })
+      setPositionAdjustments({ vertical: 0, gap: 0, width: 0, horizontal: 0 })
+      setFontScale({ front: 1, back: 1 })
+      setUseUniformScaling(false)
+      const lists = loadSavedLists(nextMode)
+      setSavedLists(lists)
+      setListName('')
+      setManualForm({ company: '', firstName: '', lastName: '' })
+      setListFilter('')
+      setManualEditingIndex(null)
+    }
+    const storedLists = loadSavedLists(nextMode)
+    setSavedLists(storedLists)
+    setMode(nextMode)
+  }
 
   const handleFile = async (event) => {
     setError('')
@@ -420,6 +568,71 @@ function App() {
     setObjectUrls((prev) => [...prev, url])
     setCustomTemplate((prev) => ({ ...prev, [side]: url }))
     setTemplateId('custom')
+  }
+
+  useEffect(() => {
+    persistSavedLists(mode, savedLists)
+  }, [mode, savedLists])
+
+  const handleSaveList = () => {
+    if (!attendees.length) {
+      setError('No hay personas para guardar.')
+      return
+    }
+    const name = listName.trim() || `Lista ${new Date().toLocaleString()}`
+    const updated = [...savedLists.filter((item) => item.name !== name), { name, attendees }]
+    setSavedLists(updated)
+    persistSavedLists(mode, updated)
+    setListName('')
+    setError('')
+  }
+
+  const handleLoadList = (name) => {
+    const found = savedLists.find((item) => item.name === name)
+    if (!found) return
+    setAttendees(found.attendees)
+    setAttendeeOverrides({})
+    setEditingIndex(0)
+    setQuickSearch('')
+  }
+
+  const handleDeleteList = (name) => {
+    const updated = savedLists.filter((item) => item.name !== name)
+    setSavedLists(updated)
+    persistSavedLists(mode, updated)
+  }
+
+  const handleManualSubmit = () => {
+    const parsed = parsePerson({ Empresa: manualForm.company, Nombre: manualForm.firstName, Apellido: manualForm.lastName })
+    if (!parsed) {
+      setError('Completa nombre/apellido para añadir una persona nueva.')
+      return
+    }
+    setAttendees((prev) => {
+      const next = [...prev]
+      if (manualEditingIndex !== null && manualEditingIndex >= 0) {
+        next[manualEditingIndex] = parsed
+      } else {
+        next.push(parsed)
+      }
+      return next
+    })
+    setManualForm({ company: '', firstName: '', lastName: '' })
+    setManualEditingIndex(null)
+    setError('')
+  }
+
+  const handleManualEdit = (index) => {
+    const person = attendees[index]
+    if (!person) return
+    setManualForm({ company: person.company, firstName: person.firstName, lastName: person.lastName })
+    setManualEditingIndex(index)
+  }
+
+  const handleManualDelete = (index) => {
+    setAttendees((prev) => prev.filter((_, idx) => idx !== index))
+    setAttendeeOverrides({})
+    setManualEditingIndex(null)
   }
 
   const loadDemo = () => {
@@ -461,15 +674,22 @@ function App() {
   }
 
   const activeTemplate = useMemo(() => {
-    const selected = TEMPLATE_OPTIONS.find((option) => option.id === templateId) || TEMPLATE_OPTIONS[0]
+    const selected = templateOptions.find((option) => option.id === templateId) || templateOptions[0]
     if (selected.id !== 'custom') return selected
     return { ...selected, ...customTemplate }
-  }, [customTemplate, templateId])
+  }, [customTemplate, templateId, templateOptions])
 
   const missingCustomTemplate = useMemo(
     () => activeTemplate.id === 'custom' && (!activeTemplate.front || !activeTemplate.back),
     [activeTemplate]
   )
+
+  useEffect(() => {
+    const validIds = templateOptions.map((option) => option.id)
+    if (!validIds.includes(templateId)) {
+      setTemplateId(templateOptions[0]?.id || '')
+    }
+  }, [templateId, templateOptions])
 
   const decoratedAttendees = useMemo(
     () =>
@@ -496,19 +716,32 @@ function App() {
   )
 
   const filteredSuggestions = useMemo(() => {
-    if (!quickSearch.trim()) return suggestionCatalog.slice(0, 8)
+    if (!quickSearch.trim()) return suggestionCatalog.slice(0, 10)
     const normalized = quickSearch.toLowerCase()
     return suggestionCatalog
       .filter((item) => item.label.toLowerCase().includes(normalized))
-      .slice(0, 8)
+      .slice(0, 10)
   }, [quickSearch, suggestionCatalog])
+
+  const previewList = useMemo(() => {
+    const normalized = listFilter.toLowerCase()
+    const filtered = attendees
+      .map((person, idx) => ({ person, idx }))
+      .filter(({ person }) => {
+        const haystack = `${person.fullName} ${person.company}`.toLowerCase()
+        return haystack.includes(normalized)
+      })
+    return filtered.slice(0, 10)
+  }, [attendees, listFilter])
+
+  const layoutConfig = MODE_CONFIGS[mode]
 
   const badgeGroups = useMemo(() => decoratedAttendees.map((attendee) => [attendee]), [decoratedAttendees])
 
-  const sheets = useMemo(() => chunkIntoSheets(badgeGroups), [badgeGroups])
+  const sheets = useMemo(() => chunkIntoSheets(badgeGroups, layoutConfig.perSheet), [badgeGroups, layoutConfig.perSheet])
   const totalSheets = useMemo(() => sheets.length, [sheets])
   const totalPeople = useMemo(() => decoratedAttendees.length, [decoratedAttendees])
-  const activeSheetIndex = useMemo(() => Math.floor(editingIndex / 4), [editingIndex])
+  const activeSheetIndex = useMemo(() => Math.floor(editingIndex / layoutConfig.perSheet), [editingIndex, layoutConfig.perSheet])
   const activeSheet = sheets[activeSheetIndex] || []
 
   const editingPerson = decoratedAttendees[editingIndex] || null
@@ -623,14 +856,30 @@ function App() {
   return (
     <div className={`page ${isPrinting ? 'page--printing' : ''} ${isExporting ? 'page--exporting' : ''}`}>
       <header className="hero">
-        <div>
-          <p className="eyebrow">Plantilla carta · 4 gafetes por hoja · Impresión a doble cara</p>
+        <div className="hero__intro">
+          <p className="eyebrow">Plantilla carta · {layoutConfig.perSheet} gafetes por hoja · Impresión a doble cara</p>
           <h1>Generador de gafetes</h1>
           <p className="lead">
-            Elige la plantilla carta de cuatro espacios o carga tu diseño, sube un Excel con las columnas <strong>Empresa</strong>,{' '}
-            <strong>Apellido</strong> y <strong>Nombre</strong> y personaliza la posición del texto. La hoja carta ya está dividida en
-            cuatro zonas listas para imprimir frente y reverso sin ajustes adicionales.
+            Elige el flujo adecuado para tu evento, sube tu Excel y personaliza plantilla, texto y listas. Ahora puedes guardar listas locales, añadir o editar personas manualmente y alternar entre modos sin perder cambios.
           </p>
+
+          <div className="mode-grid">
+            {Object.values(MODE_CONFIGS).map((config) => (
+              <button
+                key={config.id}
+                type="button"
+                className={`mode-card ${mode === config.id ? 'mode-card--active' : ''}`}
+                onClick={() => switchMode(config.id)}
+              >
+                <div className="mode-card__header">
+                  <span className="pill pill--neutral">{config.perSheet} por hoja</span>
+                  {mode === config.id && <span className="pill pill--mini">Activo</span>}
+                </div>
+                <h3>{config.title}</h3>
+                <p>{config.description}</p>
+              </button>
+            ))}
+          </div>
         </div>
         <div className="actions">
           <label className="upload">
@@ -659,7 +908,7 @@ function App() {
             <label className="control">
               <span>Selecciona plantilla</span>
               <select value={templateId} onChange={(event) => setTemplateId(event.target.value)}>
-                {TEMPLATE_OPTIONS.map((option) => (
+                {templateOptions.map((option) => (
                   <option key={option.id} value={option.id}>
                     {option.label}
                   </option>
@@ -777,6 +1026,121 @@ function App() {
               <span className="control__value">{positionAdjustments.horizontal} mm</span>
             </label>
           </div>
+        </div>
+      </section>
+
+      <section className="panel panel--stacked">
+        <div className="panel__heading">
+          <div>
+            <p className="panel__title">Listas y carga manual</p>
+            <p className="helper">
+              Guarda tu lista local, reutilízala en cualquiera de los modos y añade nombres manualmente. Usa la barra de búsqueda con autocompletado y sólo se mostrarán las primeras 10 coincidencias para mantener la vista limpia.
+            </p>
+          </div>
+          <div className="controls controls--inline">
+            <label className="control">
+              <span>Nombre de la lista</span>
+              <input value={listName} onChange={(event) => setListName(event.target.value)} placeholder="Ej. Jornada martes" />
+            </label>
+            <button type="button" onClick={handleSaveList} disabled={!attendees.length}>
+              Guardar lista local
+            </button>
+            <label className="control">
+              <span>Listas guardadas</span>
+              <select onChange={(event) => handleLoadList(event.target.value)} value="">
+                <option value="">Selecciona una lista</option>
+                {savedLists.map((item) => (
+                  <option key={item.name} value={item.name}>
+                    {item.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+          {Boolean(savedLists.length) && (
+            <div className="inline-actions">
+              {savedLists.map((item) => (
+                <button key={item.name} type="button" className="ghost" onClick={() => handleDeleteList(item.name)}>
+                  Eliminar {item.name}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div className="controls grid">
+          <label className="control">
+            <span>Empresa</span>
+            <input
+              type="text"
+              value={manualForm.company}
+              onChange={(event) => setManualForm((prev) => ({ ...prev, company: event.target.value }))}
+              placeholder="Empresa"
+            />
+          </label>
+          <label className="control">
+            <span>Apellido(s)</span>
+            <input
+              type="text"
+              value={manualForm.lastName}
+              onChange={(event) => setManualForm((prev) => ({ ...prev, lastName: event.target.value }))}
+              placeholder="Ej. Del Castillo"
+            />
+          </label>
+          <label className="control">
+            <span>Nombre</span>
+            <input
+              type="text"
+              value={manualForm.firstName}
+              onChange={(event) => setManualForm((prev) => ({ ...prev, firstName: event.target.value }))}
+              placeholder="Solo el primer nombre"
+            />
+          </label>
+          <div className="control control--summary">
+            <span className="label">Acción</span>
+            <strong>{manualEditingIndex !== null ? `Editar #${manualEditingIndex + 1}` : 'Agregar nuevo'}</strong>
+            <button type="button" className="primary" onClick={handleManualSubmit}>
+              {manualEditingIndex !== null ? 'Actualizar persona' : 'Añadir a la lista'}
+            </button>
+          </div>
+        </div>
+
+        <div className="person-rail" role="list">
+          <label className="control control--search">
+            <span>Buscar en la lista</span>
+            <input
+              type="search"
+              value={listFilter}
+              onChange={(event) => setListFilter(event.target.value)}
+              placeholder="Encuentra y edita rápido"
+              list="list-preview"
+            />
+            <datalist id="list-preview">
+              {previewList.map(({ person, idx }) => (
+                <option key={`${person.fullName}-${idx}`} value={person.fullName} />
+              ))}
+            </datalist>
+          </label>
+        </div>
+
+        <div className="preview-table" role="list">
+          {previewList.map(({ person, idx }) => (
+            <div className="preview-table__row" key={`${person.fullName}-${idx}`} role="listitem">
+              <div>
+                <strong>{person.fullName}</strong>
+                <p className="helper">{person.company || 'Sin empresa'}</p>
+              </div>
+              <div className="inline-actions">
+                <button type="button" className="ghost" onClick={() => handleManualEdit(idx)}>
+                  Editar
+                </button>
+                <button type="button" className="ghost" onClick={() => handleManualDelete(idx)}>
+                  Eliminar
+                </button>
+              </div>
+            </div>
+          ))}
+          {!previewList.length && <p className="empty">No hay coincidencias. Añade nombres o ajusta el filtro.</p>}
         </div>
       </section>
 
@@ -974,6 +1338,7 @@ function App() {
                     fontScale={fontScale}
                     index={activeSheetIndex}
                     uniformMetrics={uniformMetrics}
+                    layoutConfig={layoutConfig}
                   />
                 </div>
                 <div className="badge-preview">
@@ -986,6 +1351,7 @@ function App() {
                     fontScale={fontScale}
                     index={activeSheetIndex}
                     uniformMetrics={uniformMetrics}
+                    layoutConfig={layoutConfig}
                   />
                 </div>
               </div>
@@ -1034,6 +1400,7 @@ function App() {
                 fontScale={fontScale}
                 index={index}
                 uniformMetrics={uniformMetrics}
+                layoutConfig={layoutConfig}
               />
               <PrintSheet
                 sheet={sheet}
@@ -1043,6 +1410,7 @@ function App() {
                 fontScale={fontScale}
                 index={index}
                 uniformMetrics={uniformMetrics}
+                layoutConfig={layoutConfig}
               />
             </div>
           ))}
