@@ -283,7 +283,8 @@ function buildNameStyles(attendee, isBack, positionAdjustments, fontScale = 1, u
 
   const adjustedGap = namesGap + positionAdjustments.gap
   const adjustedOffset = namesOffset + positionAdjustments.vertical + (isBack ? 1.4 : 0)
-  const adjustedWidth = Math.max(50, namesWidth + positionAdjustments.width - (isBack ? 2 : 0))
+  const jornadaWidthBoost = isJornada ? 6 : 0
+  const adjustedWidth = Math.max(50, namesWidth + positionAdjustments.width - (isBack ? 2 : 0) + jornadaWidthBoost)
   const mirroredOffset = isJornada ? Math.max(8.5, adjustedOffset - 4.5) : Math.max(12.5, adjustedOffset - 9.8)
   const safeScale = Math.min(Math.max(fontScale, 0.6), 1.6)
   const scaledNameSize = Math.round(nameFontSize * safeScale * 10) / 10
@@ -327,7 +328,7 @@ function BadgeFace({
   }
   const primaryStyles = buildNameStyles(first, isBack, mergedAdjustments, primaryScale, uniformMetrics, isJornada)
   const nameLines = splitIntoLines(first.fullName || 'Nombre Apellido')
-  const companyLines = splitIntoLines(first.company || 'Empresa')
+  const companyLines = splitIntoLines(first.company || 'Empresa', isJornada ? 4 : 2)
 
   return (
     <section className={`badge badge--${variant} ${isJornada ? 'badge--jornada' : ''} ${templateSrc ? '' : 'badge--sheet-template'}`}>
