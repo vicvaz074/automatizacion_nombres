@@ -182,8 +182,11 @@ function buildAttendees(rows) {
   return rows
     .map((row) => {
       const company = normalizeValue(row['Empresa'])
-      const firstName = normalizeValue(row['Nombre'])
-      const lastName = normalizeValue(row['Apellido'])
+      const rawFirstName = normalizeValue(row['Nombre'])
+      const rawLastName = normalizeValue(row['Apellido'])
+
+      const [firstName = ''] = rawFirstName.split(/\s+/).filter(Boolean)
+      const [lastName = ''] = rawLastName.split(/\s+/).filter(Boolean)
       if (!company && !firstName && !lastName) return null
       return {
         company,
