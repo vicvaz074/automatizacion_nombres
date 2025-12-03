@@ -39,6 +39,33 @@ function normalizeValue(value) {
   return String(value).trim()
 }
 
+function formatProperCase(text) {
+  return normalizeValue(text)
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+    .join(' ')
+}
+
+function splitNameParts(rawFirstName, rawLastName) {
+  const firstPieces = normalizeValue(rawFirstName).split(/\s+/).filter(Boolean)
+  const lastPieces = normalizeValue(rawLastName).split(/\s+/).filter(Boolean)
+
+  const firstName = firstPieces[0] ? formatProperCase(firstPieces[0]) : ''
+
+  if (!lastPieces.length) {
+    return { firstName, lastName: '' }
+  }
+
+  const [primary, ...rest] = lastPieces
+  const needsCompound = primary.length <= 3 && rest.length
+  const compoundLastName = needsCompound ? `${primary} ${rest[0]}` : primary
+  const remaining = needsCompound ? rest.slice(1) : rest
+  const lastName = formatProperCase([compoundLastName, ...remaining].join(' '))
+
+  return { firstName, lastName }
+}
+
 function calculateFontSize(text, { baseSize, minSize, maxChars }) {
   const length = normalizeValue(text).length
   if (!length) return baseSize
@@ -185,11 +212,10 @@ function buildAttendees(rows) {
       const rawFirstName = normalizeValue(row['Nombre'])
       const rawLastName = normalizeValue(row['Apellido'])
 
-      const [firstName = ''] = rawFirstName.split(/\s+/).filter(Boolean)
-      const [lastName = ''] = rawLastName.split(/\s+/).filter(Boolean)
+      const { firstName, lastName } = splitNameParts(rawFirstName, rawLastName)
       if (!company && !firstName && !lastName) return null
       return {
-        company,
+        company: formatProperCase(company),
         firstName,
         lastName,
         fullName: `${firstName}${firstName && lastName ? ' ' : ''}${lastName}`.trim(),
@@ -372,6 +398,7 @@ function App() {
   const [highlightedSuggestion, setHighlightedSuggestion] = useState(null)
   const [isPrinting, setIsPrinting] = useState(false)
   const [useUniformScaling, setUseUniformScaling] = useState(false)
+  const [draft, setDraft] = useState({ company: '', name: '', lastName: '' })
 
   useEffect(
     () => () => {
@@ -387,6 +414,20 @@ function App() {
       return prev
     })
   }, [attendees.length])
+
+  useEffect(() => {
+    const saved = localStorage.getItem('personificadores:list')
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved)
+        if (Array.isArray(parsed)) {
+          setAttendees(parsed)
+        }
+      } catch (err) {
+        console.error('No se pudo leer la lista guardada', err)
+      }
+    }
+  }, [])
 
   const handleFile = async (event) => {
     setError('')
@@ -433,6 +474,54 @@ function App() {
     setEditingIndex(0)
     setQuickSearch('')
     setError('')
+  }
+
+  const saveCurrentList = () => {
+    localStorage.setItem('personificadores:list', JSON.stringify(attendees))
+  }
+
+  const loadSavedList = () => {
+    const saved = localStorage.getItem('personificadores:list')
+    if (!saved) return
+    try {
+      const parsed = JSON.parse(saved)
+      if (Array.isArray(parsed)) {
+        setAttendees(parsed)
+        setAttendeeOverrides({})
+        setEditingIndex(0)
+        setQuickSearch('')
+      }
+    } catch (err) {
+      console.error(err)
+      setError('No pudimos cargar la lista guardada.')
+    }
+  }
+
+  const clearSavedList = () => {
+    localStorage.removeItem('personificadores:list')
+  }
+
+  const addDraftPerson = () => {
+    const { firstName, lastName } = splitNameParts(draft.name, draft.lastName)
+    const company = formatProperCase(draft.company)
+    if (!firstName && !lastName && !company) return
+    const newPerson = {
+      company,
+      firstName,
+      lastName,
+      fullName: `${firstName}${firstName && lastName ? ' ' : ''}${lastName}`.trim(),
+    }
+    setAttendees((prev) => [...prev, newPerson])
+    setDraft({ company: '', name: '', lastName: '' })
+  }
+
+  const deleteAttendee = (index) => {
+    setAttendees((prev) => prev.filter((_, idx) => idx !== index))
+    setAttendeeOverrides((prev) => {
+      const updated = { ...prev }
+      delete updated[index]
+      return updated
+    })
   }
 
   const updatePosition = (field, value) => {
@@ -496,11 +585,11 @@ function App() {
   )
 
   const filteredSuggestions = useMemo(() => {
-    if (!quickSearch.trim()) return suggestionCatalog.slice(0, 8)
+    if (!quickSearch.trim()) return suggestionCatalog.slice(0, 10)
     const normalized = quickSearch.toLowerCase()
     return suggestionCatalog
       .filter((item) => item.label.toLowerCase().includes(normalized))
-      .slice(0, 8)
+      .slice(0, 10)
   }, [quickSearch, suggestionCatalog])
 
   const badgeGroups = useMemo(() => decoratedAttendees.map((attendee) => [attendee]), [decoratedAttendees])
@@ -651,6 +740,77 @@ function App() {
           <p className="helper">Consejo: imprime en doble cara con unión por borde largo.</p>
         </div>
       </header>
+
+      <section className="panel panel--stacked">
+        <div className="panel__heading">
+          <div>
+            <p className="panel__title">Listas rápidas</p>
+            <p className="helper">Guarda tus personificadores para reutilizarlos, añade nombres manualmente o limpia la lista.</p>
+          </div>
+          <div className="inline-actions">
+            <button type="button" onClick={saveCurrentList} disabled={!attendees.length}>
+              Guardar lista local
+            </button>
+            <button type="button" onClick={loadSavedList}>Cargar lista guardada</button>
+            <button type="button" className="ghost" onClick={clearSavedList}>
+              Borrar guardado
+            </button>
+          </div>
+        </div>
+
+        <div className="controls controls--inline">
+          <label className="control">
+            <span>Nombre(s)</span>
+            <input
+              type="text"
+              value={draft.name}
+              onChange={(event) => setDraft((prev) => ({ ...prev, name: event.target.value }))}
+              placeholder="Nombre"
+            />
+          </label>
+          <label className="control">
+            <span>Apellidos</span>
+            <input
+              type="text"
+              value={draft.lastName}
+              onChange={(event) => setDraft((prev) => ({ ...prev, lastName: event.target.value }))}
+              placeholder="Apellidos"
+            />
+          </label>
+          <label className="control">
+            <span>Empresa</span>
+            <input
+              type="text"
+              value={draft.company}
+              onChange={(event) => setDraft((prev) => ({ ...prev, company: event.target.value }))}
+              placeholder="Empresa"
+            />
+          </label>
+          <div className="control control--inline">
+            <span className="label"> </span>
+            <button type="button" onClick={addDraftPerson}>Agregar a la lista</button>
+          </div>
+        </div>
+
+        <div className="person-rail" role="list">
+          {attendees.slice(0, 10).map((person, index) => (
+            <div className="person-chip person-chip--compact" key={`${person.fullName}-${index}`} role="listitem">
+              <div>
+                <strong>{person.fullName || `Persona ${index + 1}`}</strong>
+                <p className="person-chip__meta">{person.company || 'Sin empresa'}</p>
+              </div>
+              <div className="inline-actions">
+                <button type="button" className="ghost" onClick={() => setEditingIndex(index)}>
+                  Editar
+                </button>
+                <button type="button" onClick={() => deleteAttendee(index)}>Eliminar</button>
+              </div>
+            </div>
+          ))}
+          {!attendees.length && <p className="empty">Aún no hay nombres cargados.</p>}
+          {attendees.length > 10 && <p className="helper">Mostrando los primeros 10 registros. Usa la búsqueda para más.</p>}
+        </div>
+      </section>
 
       <section className="panel">
         <div>

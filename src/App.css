@@ -247,6 +247,11 @@ button.ghost {
   transition: border-color 120ms ease, box-shadow 120ms ease, transform 120ms ease;
 }
 
+.person-chip--compact {
+  grid-template-columns: 1fr auto;
+  align-items: center;
+}
+
 .person-chip__name {
   font-weight: 700;
   margin: 0;
