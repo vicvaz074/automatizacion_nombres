@@ -451,8 +451,8 @@ function PrintSheet({
       {slots.map((group, slotIndex) => {
         const rowIndex = Math.floor(slotIndex / columns)
         const topRowOffset = 6
-        const bottomRowOffset = -3
-        const jornadaRowOffsets = [topRowOffset, -2.5, -2.5, bottomRowOffset]
+        const bottomRowOffset = -6
+        const jornadaRowOffsets = [topRowOffset, -5.5, -5.5, bottomRowOffset]
         const rowOffset = isJornadaTemplate
           ? jornadaRowOffsets[rowIndex] ?? 0
           : 0
