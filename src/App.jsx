@@ -453,7 +453,7 @@ function PrintSheet({
         const rowIndex = Math.floor(slotIndex / columns)
         const topRowOffset = 6
         const bottomRowOffset = -6
-        const jornadaRowOffsets = [topRowOffset, -5.5, -5.5, bottomRowOffset]
+        const jornadaRowOffsets = [topRowOffset, -5.5, -8.5, -9.5]
         const rowOffset = isJornadaTemplate
           ? jornadaRowOffsets[rowIndex] ?? 0
           : 0
