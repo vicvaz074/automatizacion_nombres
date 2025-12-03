@@ -277,14 +277,14 @@ function buildAttendees(rows) {
     .filter(Boolean)
 }
 
-function buildNameStyles(attendee, isBack, positionAdjustments, fontScale = 1, uniformMetrics) {
+function buildNameStyles(attendee, isBack, positionAdjustments, fontScale = 1, uniformMetrics, isJornada = false) {
   const { fullName, company } = attendee
   const { nameFontSize, companyFontSize, namesGap, namesOffset, namesWidth } = getTypographyMetrics(fullName, company)
 
   const adjustedGap = namesGap + positionAdjustments.gap
   const adjustedOffset = namesOffset + positionAdjustments.vertical + (isBack ? 1.4 : 0)
   const adjustedWidth = Math.max(50, namesWidth + positionAdjustments.width - (isBack ? 2 : 0))
-  const mirroredOffset = Math.max(12.5, adjustedOffset - 9.8)
+  const mirroredOffset = isJornada ? Math.max(8.5, adjustedOffset - 4.5) : Math.max(12.5, adjustedOffset - 9.8)
   const safeScale = Math.min(Math.max(fontScale, 0.6), 1.6)
   const scaledNameSize = Math.round(nameFontSize * safeScale * 10) / 10
   const scaledCompanySize = Math.round(companyFontSize * safeScale * 10) / 10
@@ -325,7 +325,7 @@ function BadgeFace({
     ...positionAdjustments,
     vertical: positionAdjustments.vertical + rowOffset,
   }
-  const primaryStyles = buildNameStyles(first, isBack, mergedAdjustments, primaryScale, uniformMetrics)
+  const primaryStyles = buildNameStyles(first, isBack, mergedAdjustments, primaryScale, uniformMetrics, isJornada)
   const nameLines = splitIntoLines(first.fullName || 'Nombre Apellido')
   const companyLines = splitIntoLines(first.company || 'Empresa')
 
@@ -430,7 +430,7 @@ function PrintSheet({
       ? {
           alignContent: 'center',
           justifyItems: 'center',
-          padding: '26mm 14mm 14mm',
+          padding: '18mm 14mm 12mm',
           rowGap: template?.grid?.gap || '6mm',
         }
       : {}),
@@ -450,8 +450,8 @@ function PrintSheet({
       </p>
       {slots.map((group, slotIndex) => {
         const rowIndex = Math.floor(slotIndex / columns)
-        const topRowOffset = 11.5
-        const bottomRowOffset = -2.5
+        const topRowOffset = 6
+        const bottomRowOffset = -1.5
         const rowOffset = isJornadaTemplate ? (rowIndex === 0 ? topRowOffset : rowIndex === rows - 1 ? bottomRowOffset : 0) : 0
 
         return (
