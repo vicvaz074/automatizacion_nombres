@@ -6,26 +6,71 @@ import './App.css'
 
 const FUTURA_STACK = "'Futura', 'Futura PT', 'Century Gothic', 'Arial', sans-serif"
 const DEFAULT_TEMPLATE_PATH = encodeURI('/Plantilla_4_personas.png')
+const JORNADA_TEMPLATE_PATH = encodeURI('/Gafetes_jornada.png')
 const DEFAULT_TEMPLATE_PATH_FRONT = DEFAULT_TEMPLATE_PATH
 const DEFAULT_TEMPLATE_PATH_BACK = DEFAULT_TEMPLATE_PATH
 const COMPANY_FONT_BOOST = 1.12
 
-const TEMPLATE_OPTIONS = [
-  {
-    id: 'sheet-letter',
-    label: 'Plantilla general (tamaño carta)',
-    front: DEFAULT_TEMPLATE_PATH_FRONT,
-    back: DEFAULT_TEMPLATE_PATH_BACK,
-    layout: 'sheet',
-  },
-  {
-    id: 'custom',
-    label: 'Usar mi propia plantilla',
-    front: '',
-    back: '',
-    layout: 'sheet',
-  },
-]
+const MODES = {
+  PERSONIFICADORES: 'personificadores',
+  JORNADA: 'gafetes-jornada',
+}
+
+const TEMPLATE_OPTIONS = {
+  [MODES.PERSONIFICADORES]: [
+    {
+      id: 'sheet-letter',
+      label: 'Plantilla general (tamaño carta)',
+      front: DEFAULT_TEMPLATE_PATH_FRONT,
+      back: DEFAULT_TEMPLATE_PATH_BACK,
+      layout: 'sheet',
+      perSheet: 4,
+      grid: { columns: 2, rows: 2, gap: '6mm' },
+      orderFront: [0, 1, 2, 3],
+      orderBack: [1, 0, 3, 2],
+    },
+    {
+      id: 'custom',
+      label: 'Usar mi propia plantilla',
+      front: '',
+      back: '',
+      layout: 'sheet',
+      perSheet: 4,
+      grid: { columns: 2, rows: 2, gap: '6mm' },
+      orderFront: [0, 1, 2, 3],
+      orderBack: [1, 0, 3, 2],
+    },
+  ],
+  [MODES.JORNADA]: [
+    {
+      id: 'jornada',
+      label: 'Gafetes Jornada (2 columnas · 8 filas)',
+      front: JORNADA_TEMPLATE_PATH,
+      back: JORNADA_TEMPLATE_PATH,
+      layout: 'sheet',
+      perSheet: 16,
+      grid: { columns: 2, rows: 8, gap: '2mm' },
+      orderFront: Array.from({ length: 16 }, (_, index) => index),
+      orderBack: Array.from({ length: 16 }, (_, index) => index),
+    },
+    {
+      id: 'custom-jornada',
+      label: 'Usar mi propia plantilla de jornada',
+      front: '',
+      back: '',
+      layout: 'sheet',
+      perSheet: 16,
+      grid: { columns: 2, rows: 8, gap: '2mm' },
+      orderFront: Array.from({ length: 16 }, (_, index) => index),
+      orderBack: Array.from({ length: 16 }, (_, index) => index),
+    },
+  ],
+}
+
+const CUSTOM_TEMPLATE_IDS = {
+  [MODES.PERSONIFICADORES]: 'custom',
+  [MODES.JORNADA]: 'custom-jornada',
+}
 
 const demoRows = [
   { company: 'davara Abogados', lastName: 'Rangel', firstName: 'María' },
@@ -37,6 +82,24 @@ const demoRows = [
 function normalizeValue(value) {
   if (value === undefined || value === null) return ''
   return String(value).trim()
+}
+
+function toTitleCase(value) {
+  return normalizeValue(value)
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((word) => `${word.charAt(0).toUpperCase()}${word.slice(1).toLowerCase()}`)
+    .join(' ')
+}
+
+function extractCompoundLastName(rawLastName) {
+  const parts = normalizeValue(rawLastName).split(/\s+/).filter(Boolean)
+  if (!parts.length) return ''
+  const [first, second] = parts
+  if (first.length <= 3 && second) {
+    return toTitleCase(`${first} ${second}`)
+  }
+  return toTitleCase(first)
 }
 
 function calculateFontSize(text, { baseSize, minSize, maxChars }) {
@@ -181,12 +244,12 @@ function getTypographyMetrics(fullName, company) {
 function buildAttendees(rows) {
   return rows
     .map((row) => {
-      const company = normalizeValue(row['Empresa'])
+      const company = toTitleCase(row['Empresa'])
       const rawFirstName = normalizeValue(row['Nombre'])
       const rawLastName = normalizeValue(row['Apellido'])
 
-      const [firstName = ''] = rawFirstName.split(/\s+/).filter(Boolean)
-      const [lastName = ''] = rawLastName.split(/\s+/).filter(Boolean)
+      const firstName = toTitleCase(rawFirstName)
+      const lastName = extractCompoundLastName(rawLastName)
       if (!company && !firstName && !lastName) return null
       return {
         company,
@@ -282,9 +345,12 @@ function chunkIntoSheets(groups, perSheet = 4) {
   return sheets
 }
 
-function buildSlots(sheet, variant) {
-  const order = variant === 'back' ? [1, 0, 3, 2] : [0, 1, 2, 3]
-  const arranged = Array(4).fill(null)
+function buildSlots(sheet, variant, template) {
+  const perSheet = template?.perSheet || 4
+  const orderFront = template?.orderFront || Array.from({ length: perSheet }, (_, index) => index)
+  const orderBack = template?.orderBack || orderFront
+  const order = variant === 'back' ? orderBack : orderFront
+  const arranged = Array(perSheet).fill(null)
 
   sheet.forEach((group, index) => {
     const targetIndex = order[index] ?? index
@@ -321,8 +387,15 @@ function PrintSheet({
   const useSheetTemplate = template.layout === 'sheet'
   const sheetTemplateSrc = variant === 'back' ? template.back : template.front
   const sheetBackgroundImage = sheetTemplateSrc ? `url("${sheetTemplateSrc}")` : ''
-  const sheetStyle = useSheetTemplate && sheetBackgroundImage ? { backgroundImage: sheetBackgroundImage } : undefined
-  const slots = buildSlots(sheet, variant)
+  const columns = template?.grid?.columns || 2
+  const rows = template?.grid?.rows || Math.ceil((template?.perSheet || sheet.length || 4) / columns)
+  const sheetStyle = {
+    gridTemplateColumns: `repeat(${columns}, 1fr)`,
+    gridTemplateRows: `repeat(${rows}, 1fr)`,
+    ...(template?.grid?.gap && !useSheetTemplate ? { gap: template.grid.gap } : {}),
+    ...(useSheetTemplate && sheetBackgroundImage ? { backgroundImage: sheetBackgroundImage } : {}),
+  }
+  const slots = buildSlots(sheet, variant, template)
   const hasContent = sheet.length > 0
 
   return (
@@ -360,8 +433,15 @@ function PrintSheet({
 function App() {
   const [attendees, setAttendees] = useState([])
   const [error, setError] = useState('')
-  const [templateId, setTemplateId] = useState(TEMPLATE_OPTIONS[0].id)
-  const [customTemplate, setCustomTemplate] = useState({ front: '', back: '' })
+  const [activeMode, setActiveMode] = useState(MODES.PERSONIFICADORES)
+  const [templateSelection, setTemplateSelection] = useState({
+    [MODES.PERSONIFICADORES]: TEMPLATE_OPTIONS[MODES.PERSONIFICADORES][0].id,
+    [MODES.JORNADA]: TEMPLATE_OPTIONS[MODES.JORNADA][0].id,
+  })
+  const [customTemplates, setCustomTemplates] = useState({
+    [MODES.PERSONIFICADORES]: { front: '', back: '' },
+    [MODES.JORNADA]: { front: '', back: '' },
+  })
   const [positionAdjustments, setPositionAdjustments] = useState({ vertical: 0, gap: 0, width: 0, horizontal: 0 })
   const [fontScale, setFontScale] = useState({ front: 1, back: 1 })
   const [attendeeOverrides, setAttendeeOverrides] = useState({})
@@ -372,6 +452,33 @@ function App() {
   const [highlightedSuggestion, setHighlightedSuggestion] = useState(null)
   const [isPrinting, setIsPrinting] = useState(false)
   const [useUniformScaling, setUseUniformScaling] = useState(false)
+  const [manualForm, setManualForm] = useState({ company: '', firstName: '', lastName: '' })
+  const [editingManualIndex, setEditingManualIndex] = useState(null)
+  const [listName, setListName] = useState('')
+  const [savedLists, setSavedLists] = useState([])
+
+  const templateOptions = TEMPLATE_OPTIONS[activeMode] || []
+  const templateId = templateSelection[activeMode] || templateOptions[0]?.id || ''
+  const customTemplate = customTemplates[activeMode] || { front: '', back: '' }
+  const activeTemplateOption = templateOptions.find((option) => option.id === templateId) || templateOptions[0]
+  const activeTemplate =
+    activeTemplateOption?.id === CUSTOM_TEMPLATE_IDS[activeMode]
+      ? { ...activeTemplateOption, front: customTemplate.front, back: customTemplate.back }
+      : activeTemplateOption || {
+          id: 'fallback',
+          label: 'Plantilla base',
+          front: '',
+          back: '',
+          layout: 'sheet',
+          perSheet: 4,
+          grid: { columns: 2, rows: 2, gap: '6mm' },
+          orderFront: [0, 1, 2, 3],
+          orderBack: [1, 0, 3, 2],
+        }
+
+  const perSheet = activeTemplate?.perSheet || 4
+  const isPersonMode = activeMode === MODES.PERSONIFICADORES
+  const perSheetLabel = `${perSheet} gafetes por hoja`
 
   useEffect(
     () => () => {
@@ -381,12 +488,29 @@ function App() {
   )
 
   useEffect(() => {
+    try {
+      const storedLists = localStorage.getItem('saved-badge-lists')
+      if (storedLists) {
+        setSavedLists(JSON.parse(storedLists))
+      }
+    } catch (err) {
+      console.error(err)
+    }
+  }, [])
+
+  useEffect(() => {
     setEditingIndex((prev) => {
       if (!attendees.length) return 0
       if (prev >= attendees.length) return 0
       return prev
     })
   }, [attendees.length])
+
+  useEffect(() => {
+    setEditingIndex(0)
+    setQuickSearch('')
+    setHighlightedSuggestion(null)
+  }, [activeMode])
 
   const handleFile = async (event) => {
     setError('')
@@ -407,6 +531,7 @@ function App() {
       setAttendeeOverrides({})
       setEditingIndex(0)
       setQuickSearch('')
+      resetManualForm()
     } catch (err) {
       console.error(err)
       setError('No pudimos leer el archivo. Asegúrate de subir un Excel (.xlsx) con las columnas esperadas.')
@@ -418,8 +543,11 @@ function App() {
     if (!file) return
     const url = URL.createObjectURL(file)
     setObjectUrls((prev) => [...prev, url])
-    setCustomTemplate((prev) => ({ ...prev, [side]: url }))
-    setTemplateId('custom')
+    setCustomTemplates((prev) => ({
+      ...prev,
+      [activeMode]: { ...(prev[activeMode] || { front: '', back: '' }), [side]: url },
+    }))
+    setTemplateSelection((prev) => ({ ...prev, [activeMode]: CUSTOM_TEMPLATE_IDS[activeMode] }))
   }
 
   const loadDemo = () => {
@@ -433,6 +561,134 @@ function App() {
     setEditingIndex(0)
     setQuickSearch('')
     setError('')
+    resetManualForm()
+  }
+
+  const handleModeChange = (mode) => {
+    setActiveMode(mode)
+  }
+
+  const resetManualForm = () => {
+    setEditingManualIndex(null)
+    setManualForm({ company: '', firstName: '', lastName: '' })
+  }
+
+  const persistSavedLists = (updater) => {
+    setSavedLists((prev) => {
+      const next = typeof updater === 'function' ? updater(prev) : updater
+      localStorage.setItem('saved-badge-lists', JSON.stringify(next))
+      return next
+    })
+  }
+
+  const handleSaveList = () => {
+    setError('')
+    if (!attendees.length) {
+      setError('Necesitas al menos una persona para guardar la lista.')
+      return
+    }
+
+    const trimmedName = listName.trim()
+    if (!trimmedName) {
+      setError('Asigna un nombre a la lista para guardarla.')
+      return
+    }
+
+    const payload = {
+      id: `${activeMode}-${Date.now()}`,
+      name: trimmedName,
+      mode: activeMode,
+      attendees: attendees.map((item) => ({ ...item })),
+      overrides: { ...attendeeOverrides },
+    }
+
+    persistSavedLists((prev) => {
+      const existingIndex = prev.findIndex((item) => item.name === trimmedName && item.mode === activeMode)
+      if (existingIndex >= 0) {
+        const updated = [...prev]
+        updated[existingIndex] = { ...payload, id: prev[existingIndex].id }
+        return updated
+      }
+      return [...prev, payload]
+    })
+
+    setListName('')
+  }
+
+  const handleLoadList = (id) => {
+    const target = savedLists.find((item) => item.id === id && item.mode === activeMode)
+    if (!target) return
+    setAttendees(target.attendees || [])
+    setAttendeeOverrides(target.overrides || {})
+    setEditingIndex(0)
+    setQuickSearch('')
+    resetManualForm()
+  }
+
+  const handleDeleteList = (id) => {
+    persistSavedLists((prev) => prev.filter((item) => item.id !== id))
+  }
+
+  const rebuildOverridesAfterRemoval = (overrides, removedIndex) => {
+    const next = {}
+    Object.entries(overrides).forEach(([key, value]) => {
+      const numericKey = Number(key)
+      if (Number.isNaN(numericKey) || numericKey === removedIndex) return
+      const targetIndex = numericKey > removedIndex ? numericKey - 1 : numericKey
+      next[targetIndex] = value
+    })
+    return next
+  }
+
+  const handleRemovePerson = (index) => {
+    setEditingManualIndex((current) => (current === index ? null : current))
+    setAttendees((prev) => {
+      const next = prev.filter((_, idx) => idx !== index)
+      setAttendeeOverrides((overrides) => rebuildOverridesAfterRemoval(overrides, index))
+      setEditingIndex((current) => Math.max(0, Math.min(current, next.length - 1)))
+      return next
+    })
+  }
+
+  const handleManualSubmit = (event) => {
+    event.preventDefault()
+    setError('')
+
+    const [entry] = buildAttendees([
+      { Empresa: manualForm.company, Nombre: manualForm.firstName, Apellido: manualForm.lastName },
+    ])
+
+    if (!entry) {
+      setError('Completa el nombre o la empresa para añadirlo a la lista.')
+      return
+    }
+
+    setAttendees((prev) => {
+      const next = [...prev]
+      if (editingManualIndex !== null && editingManualIndex >= 0) {
+        next[editingManualIndex] = entry
+      } else {
+        next.push(entry)
+      }
+      setEditingIndex((current) => (editingManualIndex !== null ? Math.min(current, next.length - 1) : next.length - 1))
+      return next
+    })
+
+    setAttendeeOverrides((prev) => {
+      if (editingManualIndex === null) return prev
+      const { [editingManualIndex]: removed, ...rest } = prev
+      return rest
+    })
+
+    resetManualForm()
+  }
+
+  const handleStartManualEdit = (index) => {
+    const target = attendees[index]
+    if (!target) return
+    setEditingManualIndex(index)
+    setManualForm({ company: target.company, firstName: target.firstName, lastName: target.lastName })
+    setEditingIndex(index)
   }
 
   const updatePosition = (field, value) => {
@@ -444,11 +700,12 @@ function App() {
   }
 
   const updateAttendeeOverride = (index, field, value) => {
+    const normalizedValue = ['name', 'company'].includes(field) ? toTitleCase(value) : value
     setAttendeeOverrides((prev) => ({
       ...prev,
       [index]: {
         ...(prev[index] || {}),
-        [field]: value,
+        [field]: normalizedValue,
       },
     }))
   }
@@ -460,15 +717,10 @@ function App() {
     })
   }
 
-  const activeTemplate = useMemo(() => {
-    const selected = TEMPLATE_OPTIONS.find((option) => option.id === templateId) || TEMPLATE_OPTIONS[0]
-    if (selected.id !== 'custom') return selected
-    return { ...selected, ...customTemplate }
-  }, [customTemplate, templateId])
-
   const missingCustomTemplate = useMemo(
-    () => activeTemplate.id === 'custom' && (!activeTemplate.front || !activeTemplate.back),
-    [activeTemplate]
+    () =>
+      activeTemplate?.id === CUSTOM_TEMPLATE_IDS[activeMode] && (!activeTemplate?.front || !activeTemplate?.back),
+    [activeMode, activeTemplate]
   )
 
   const decoratedAttendees = useMemo(
@@ -495,6 +747,11 @@ function App() {
     [decoratedAttendees]
   )
 
+  const savedListsForMode = useMemo(
+    () => savedLists.filter((item) => item.mode === activeMode),
+    [activeMode, savedLists]
+  )
+
   const filteredSuggestions = useMemo(() => {
     if (!quickSearch.trim()) return suggestionCatalog.slice(0, 8)
     const normalized = quickSearch.toLowerCase()
@@ -505,10 +762,10 @@ function App() {
 
   const badgeGroups = useMemo(() => decoratedAttendees.map((attendee) => [attendee]), [decoratedAttendees])
 
-  const sheets = useMemo(() => chunkIntoSheets(badgeGroups), [badgeGroups])
+  const sheets = useMemo(() => chunkIntoSheets(badgeGroups, perSheet), [badgeGroups, perSheet])
   const totalSheets = useMemo(() => sheets.length, [sheets])
   const totalPeople = useMemo(() => decoratedAttendees.length, [decoratedAttendees])
-  const activeSheetIndex = useMemo(() => Math.floor(editingIndex / 4), [editingIndex])
+  const activeSheetIndex = useMemo(() => Math.floor(editingIndex / perSheet), [editingIndex, perSheet])
   const activeSheet = sheets[activeSheetIndex] || []
 
   const editingPerson = decoratedAttendees[editingIndex] || null
@@ -623,14 +880,48 @@ function App() {
   return (
     <div className={`page ${isPrinting ? 'page--printing' : ''} ${isExporting ? 'page--exporting' : ''}`}>
       <header className="hero">
-        <div>
-          <p className="eyebrow">Plantilla carta · 4 gafetes por hoja · Impresión a doble cara</p>
-          <h1>Generador de gafetes</h1>
-          <p className="lead">
-            Elige la plantilla carta de cuatro espacios o carga tu diseño, sube un Excel con las columnas <strong>Empresa</strong>,{' '}
-            <strong>Apellido</strong> y <strong>Nombre</strong> y personaliza la posición del texto. La hoja carta ya está dividida en
-            cuatro zonas listas para imprimir frente y reverso sin ajustes adicionales.
+        <div className="hero__intro">
+          <p className="eyebrow">
+            {perSheet} gafetes por hoja · Guarda listas locales · Impresión a doble cara
           </p>
+          <h1>Generador de {isPersonMode ? 'personificadores' : 'gafetes de jornada'}</h1>
+          <p className="lead">
+            {isPersonMode
+              ? 'Migra la experiencia original de personificadores: ajusta la plantilla carta, sube tu Excel y personaliza el texto con total control.'
+              : 'Usa la plantilla de Gafetes Jornada (2 columnas x 8 filas), carga tu Excel y obtén las 16 credenciales alineadas en una sola hoja.'}
+          </p>
+
+          <div className="mode-grid" role="tablist" aria-label="Tipo de gafete">
+            <button
+              type="button"
+              className={`mode-card ${isPersonMode ? 'mode-card--active' : ''}`}
+              onClick={() => handleModeChange(MODES.PERSONIFICADORES)}
+              role="tab"
+              aria-selected={isPersonMode}
+            >
+              <div className="mode-card__header">
+                <span className="pill pill--neutral">4 por hoja</span>
+                {isPersonMode && <span className="pill pill--accent">Activo</span>}
+              </div>
+              <h3>Personificadores</h3>
+              <p>Todo lo que ya tenías: controles finos, plantillas personalizadas y vista previa doble.</p>
+            </button>
+
+            <button
+              type="button"
+              className={`mode-card ${!isPersonMode ? 'mode-card--active' : ''}`}
+              onClick={() => handleModeChange(MODES.JORNADA)}
+              role="tab"
+              aria-selected={!isPersonMode}
+            >
+              <div className="mode-card__header">
+                <span className="pill pill--neutral">16 por hoja</span>
+                {!isPersonMode && <span className="pill pill--accent">Activo</span>}
+              </div>
+              <h3>Gafetes Jornada</h3>
+              <p>Replica el flujo con la plantilla de 2 columnas y 8 filas usando Gafetes_jornada.png.</p>
+            </button>
+          </div>
         </div>
         <div className="actions">
           <label className="upload">
@@ -648,9 +939,133 @@ function App() {
               {isExporting ? 'Generando PDF…' : 'Descargar PDF'}
             </button>
           </div>
-          <p className="helper">Consejo: imprime en doble cara con unión por borde largo.</p>
+          <div className="actions__meta">
+            <p className="helper">Consejo: imprime en doble cara con unión por borde largo.</p>
+            <div className="pill pill--neutral">Plantilla activa: {activeTemplate?.label}</div>
+          </div>
         </div>
       </header>
+
+      <section className="panel panel--stacked panel--soft">
+        <div className="panel__heading">
+          <div>
+            <p className="panel__title">Captura rápida y listas locales</p>
+            <p className="helper">
+              Añade o edita nombres manualmente, guarda la lista en tu navegador y recupérala en cualquiera de las dos secciones
+              sin volver a cargar un Excel.
+            </p>
+          </div>
+        </div>
+        <div className="list-tools">
+          <form className="list-tools__block" onSubmit={handleManualSubmit}>
+            <p className="block__title">Añade o edita una persona</p>
+            <div className="controls controls--inline">
+              <label className="control">
+                <span>Nombre(s)</span>
+                <input
+                  type="text"
+                  value={manualForm.firstName}
+                  onChange={(event) => setManualForm((prev) => ({ ...prev, firstName: event.target.value }))}
+                  placeholder="Ej. Ana Sofía"
+                />
+              </label>
+              <label className="control">
+                <span>Apellidos</span>
+                <input
+                  type="text"
+                  value={manualForm.lastName}
+                  onChange={(event) => setManualForm((prev) => ({ ...prev, lastName: event.target.value }))}
+                  placeholder="Ej. Del Castillo"
+                />
+              </label>
+              <label className="control">
+                <span>Empresa</span>
+                <input
+                  type="text"
+                  value={manualForm.company}
+                  onChange={(event) => setManualForm((prev) => ({ ...prev, company: event.target.value }))}
+                  placeholder="Nombre de la empresa"
+                />
+              </label>
+            </div>
+            <div className="inline-actions">
+              <button type="submit" className="primary">
+                {editingManualIndex !== null ? 'Actualizar persona' : 'Agregar a la lista'}
+              </button>
+              {editingManualIndex !== null && (
+                <button type="button" className="ghost" onClick={resetManualForm}>
+                  Cancelar edición
+                </button>
+              )}
+            </div>
+            <p className="helper">Los nombres se normalizan con mayúscula inicial y apellidos compuestos.</p>
+          </form>
+
+          <div className="list-tools__block">
+            <p className="block__title">Listas guardadas para esta sección</p>
+            <div className="controls">
+              <label className="control">
+                <span>Nombre de la lista</span>
+                <input
+                  type="text"
+                  value={listName}
+                  onChange={(event) => setListName(event.target.value)}
+                  placeholder="Ej. Jornada matutina"
+                />
+              </label>
+              <div className="inline-actions">
+                <button type="button" className="primary" onClick={handleSaveList} disabled={!attendees.length}>
+                  Guardar lista actual
+                </button>
+                <span className="control__hint">Se almacenan localmente en este navegador.</span>
+              </div>
+              <div className="saved-lists" role="list">
+                {savedListsForMode.length ? (
+                  savedListsForMode.map((item) => (
+                    <div key={item.id} className="saved-list" role="listitem">
+                      <div>
+                        <strong>{item.name}</strong>
+                        <p className="helper">{item.attendees?.length || 0} personas guardadas</p>
+                      </div>
+                      <div className="inline-actions">
+                        <button type="button" className="ghost" onClick={() => handleLoadList(item.id)}>
+                          Cargar
+                        </button>
+                        <button type="button" className="ghost danger" onClick={() => handleDeleteList(item.id)}>
+                          Eliminar
+                        </button>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <p className="empty">Aún no hay listas guardadas para esta vista.</p>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {attendees.length > 0 && (
+          <div className="people-table" role="list">
+            {attendees.map((person, index) => (
+              <div className="people-row" key={`${person.fullName}-${index}`} role="listitem">
+                <div>
+                  <p className="people-row__name">#{index + 1} · {person.fullName || 'Sin nombre'}</p>
+                  <p className="people-row__meta">{person.company || 'Sin empresa'} · Apellido base: {person.lastName || 'N/A'}</p>
+                </div>
+                <div className="inline-actions">
+                  <button type="button" className="ghost" onClick={() => handleStartManualEdit(index)}>
+                    Editar
+                  </button>
+                  <button type="button" className="ghost danger" onClick={() => handleRemovePerson(index)}>
+                    Eliminar
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
 
       <section className="panel">
         <div>
@@ -658,8 +1073,11 @@ function App() {
           <div className="controls">
             <label className="control">
               <span>Selecciona plantilla</span>
-              <select value={templateId} onChange={(event) => setTemplateId(event.target.value)}>
-                {TEMPLATE_OPTIONS.map((option) => (
+              <select
+                value={templateId}
+                onChange={(event) => setTemplateSelection((prev) => ({ ...prev, [activeMode]: event.target.value }))}
+              >
+                {templateOptions.map((option) => (
                   <option key={option.id} value={option.id}>
                     {option.label}
                   </option>
@@ -667,7 +1085,7 @@ function App() {
               </select>
             </label>
 
-            {templateId === 'custom' && (
+            {templateId === CUSTOM_TEMPLATE_IDS[activeMode] && (
               <div className="control control--inline">
                 <label>
                   <span>Frente</span>
@@ -955,14 +1373,14 @@ function App() {
               </div>
             </div>
 
-            <div className="person-preview person-preview--stacked">
-              <div className="person-preview__header">
-                <p className="person-preview__label">
-                  Vista previa en vivo de <strong>{editingPerson?.fullName || 'la persona seleccionada'}</strong>
-                </p>
-                <div className="pill pill--neutral">Plantilla carta · 4 gafetes</div>
-              </div>
-              <p className="helper">Observa cómo se verá cada lado sin salir de la edición individual.</p>
+                <div className="person-preview person-preview--stacked">
+                  <div className="person-preview__header">
+                    <p className="person-preview__label">
+                      Vista previa en vivo de <strong>{editingPerson?.fullName || 'la persona seleccionada'}</strong>
+                    </p>
+                    <div className="pill pill--neutral">{perSheetLabel}</div>
+                  </div>
+                  <p className="helper">Observa cómo se verá cada lado sin salir de la edición individual.</p>
               <div className="badge-pair badge-pair--compact">
                 <div className="badge-preview">
                   <p className="badge-preview__label">Hoja activa · Frente</p>
@@ -1017,8 +1435,8 @@ function App() {
         <div className="preview-info">
           <h2>Vista previa</h2>
           <p>
-            Ajusta los deslizadores hasta que el texto caiga en el lugar exacto de tu plantilla. Cada hoja carta acomoda
-            4 gafetes simétricos listos para imprimir frente y reverso con la misma orientación.
+            Ajusta los deslizadores hasta que el texto caiga en el lugar exacto de tu plantilla. Cada hoja acomoda
+            {perSheetLabel} listos para imprimir frente y reverso con la misma orientación.
           </p>
         </div>
         {!attendees.length && <p className="empty">Sube tu Excel o usa el ejemplo para comenzar.</p>}
