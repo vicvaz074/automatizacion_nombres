@@ -72,8 +72,6 @@ const CUSTOM_TEMPLATE_IDS = {
   [MODES.JORNADA]: 'custom-jornada',
 }
 
-const PREVIEW_LIMIT = 10
-
 const demoRows = [
   { company: 'davara Abogados', lastName: 'Rangel', firstName: 'María' },
   { company: 'Tsuru', lastName: 'Aguayo', firstName: 'Diego' },
@@ -429,7 +427,7 @@ function PrintSheet({
     gridTemplateRows: `repeat(${rows}, 1fr)`,
     ...(template?.grid?.gap && !useSheetTemplate ? { gap: template.grid.gap } : {}),
     ...(isJornadaTemplate
-      ? { alignContent: 'center', justifyItems: 'center', padding: '16mm 14mm', rowGap: template?.grid?.gap || '6mm' }
+      ? { alignContent: 'center', justifyItems: 'center', padding: '20mm 14mm', rowGap: template?.grid?.gap || '6mm' }
       : {}),
     ...(useSheetTemplate && sheetBackgroundImage ? { backgroundImage: sheetBackgroundImage } : {}),
   }
@@ -447,7 +445,7 @@ function PrintSheet({
       </p>
       {slots.map((group, slotIndex) => {
         const rowIndex = Math.floor(slotIndex / columns)
-        const rowOffset = isJornadaTemplate ? (rowIndex === 0 ? 4 : rowIndex === rows - 1 ? -4 : 0) : 0
+        const rowOffset = isJornadaTemplate ? (rowIndex === 0 ? 7.5 : rowIndex === rows - 1 ? -7.5 : 0) : 0
 
         return (
           <div className="print-slot" key={`${variant}-${index}-${slotIndex}`}>
@@ -808,11 +806,7 @@ function App() {
   const badgeGroups = useMemo(() => decoratedAttendees.map((attendee) => [attendee]), [decoratedAttendees])
 
   const exportSheets = useMemo(() => chunkIntoSheets(badgeGroups, perSheet), [badgeGroups, perSheet])
-  const previewBadgeGroups = useMemo(() => badgeGroups.slice(0, PREVIEW_LIMIT), [badgeGroups])
-  const previewSheets = useMemo(
-    () => chunkIntoSheets(previewBadgeGroups, perSheet),
-    [previewBadgeGroups, perSheet]
-  )
+  const previewSheets = exportSheets
   const totalSheets = useMemo(() => exportSheets.length, [exportSheets])
   const totalPeople = useMemo(() => decoratedAttendees.length, [decoratedAttendees])
   const activeSheetIndex = useMemo(() => Math.floor(editingIndex / perSheet), [editingIndex, perSheet])
@@ -1488,12 +1482,6 @@ function App() {
             Ajusta los deslizadores hasta que el texto caiga en el lugar exacto de tu plantilla. Cada hoja acomoda
             {perSheetLabel} listos para imprimir frente y reverso con la misma orientación.
           </p>
-          {totalPeople > PREVIEW_LIMIT && (
-            <p className="helper">
-              Solo se previsualizan las primeras {PREVIEW_LIMIT} personas para mantener la app ágil. La descarga incluye
-              las {totalPeople} personas cargadas.
-            </p>
-          )}
         </div>
         {!attendees.length && <p className="empty">Sube tu Excel o usa el ejemplo para comenzar.</p>}
         {missingCustomTemplate && <p className="empty">Sube ambos lados de la plantilla personalizada para generar la vista previa.</p>}
