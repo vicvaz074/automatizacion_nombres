@@ -587,6 +587,22 @@ button.ghost.danger {
   justify-items: center;
 }
 
+.sheet-grid--preview {
+  position: relative;
+}
+
+.sheet-grid--export {
+  position: absolute;
+  left: -9999px;
+  top: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.sheet-grid--export .sheet-pair {
+  max-width: 215.9mm;
+}
+
 .page--exporting {
   background: #fff;
 }

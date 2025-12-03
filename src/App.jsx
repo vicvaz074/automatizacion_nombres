@@ -44,14 +44,14 @@ const TEMPLATE_OPTIONS = {
   [MODES.JORNADA]: [
     {
       id: 'jornada',
-      label: 'Gafetes Jornada (2 columnas · 8 filas)',
+      label: 'Gafetes Jornada (2 columnas · 4 filas)',
       front: JORNADA_TEMPLATE_PATH,
       back: JORNADA_TEMPLATE_PATH,
       layout: 'sheet',
-      perSheet: 16,
-      grid: { columns: 2, rows: 8, gap: '2mm' },
-      orderFront: Array.from({ length: 16 }, (_, index) => index),
-      orderBack: Array.from({ length: 16 }, (_, index) => index),
+      perSheet: 8,
+      grid: { columns: 2, rows: 4, gap: '2mm' },
+      orderFront: Array.from({ length: 8 }, (_, index) => index),
+      orderBack: Array.from({ length: 8 }, (_, index) => index),
     },
     {
       id: 'custom-jornada',
@@ -59,10 +59,10 @@ const TEMPLATE_OPTIONS = {
       front: '',
       back: '',
       layout: 'sheet',
-      perSheet: 16,
-      grid: { columns: 2, rows: 8, gap: '2mm' },
-      orderFront: Array.from({ length: 16 }, (_, index) => index),
-      orderBack: Array.from({ length: 16 }, (_, index) => index),
+      perSheet: 8,
+      grid: { columns: 2, rows: 4, gap: '2mm' },
+      orderFront: Array.from({ length: 8 }, (_, index) => index),
+      orderBack: Array.from({ length: 8 }, (_, index) => index),
     },
   ],
 }
@@ -71,6 +71,8 @@ const CUSTOM_TEMPLATE_IDS = {
   [MODES.PERSONIFICADORES]: 'custom',
   [MODES.JORNADA]: 'custom-jornada',
 }
+
+const PREVIEW_LIMIT = 10
 
 const demoRows = [
   { company: 'davara Abogados', lastName: 'Rangel', firstName: 'María' },
@@ -100,6 +102,11 @@ function extractCompoundLastName(rawLastName) {
     return toTitleCase(`${first} ${second}`)
   }
   return toTitleCase(first)
+}
+
+function extractSingleFirstName(rawFirstName) {
+  const [first] = normalizeValue(rawFirstName).split(/\s+/).filter(Boolean)
+  return toTitleCase(first || '')
 }
 
 function calculateFontSize(text, { baseSize, minSize, maxChars }) {
@@ -248,7 +255,7 @@ function buildAttendees(rows) {
       const rawFirstName = normalizeValue(row['Nombre'])
       const rawLastName = normalizeValue(row['Apellido'])
 
-      const firstName = toTitleCase(rawFirstName)
+      const firstName = extractSingleFirstName(rawFirstName)
       const lastName = extractCompoundLastName(rawLastName)
       if (!company && !firstName && !lastName) return null
       return {
@@ -762,11 +769,16 @@ function App() {
 
   const badgeGroups = useMemo(() => decoratedAttendees.map((attendee) => [attendee]), [decoratedAttendees])
 
-  const sheets = useMemo(() => chunkIntoSheets(badgeGroups, perSheet), [badgeGroups, perSheet])
-  const totalSheets = useMemo(() => sheets.length, [sheets])
+  const exportSheets = useMemo(() => chunkIntoSheets(badgeGroups, perSheet), [badgeGroups, perSheet])
+  const previewBadgeGroups = useMemo(() => badgeGroups.slice(0, PREVIEW_LIMIT), [badgeGroups])
+  const previewSheets = useMemo(
+    () => chunkIntoSheets(previewBadgeGroups, perSheet),
+    [previewBadgeGroups, perSheet]
+  )
+  const totalSheets = useMemo(() => exportSheets.length, [exportSheets])
   const totalPeople = useMemo(() => decoratedAttendees.length, [decoratedAttendees])
   const activeSheetIndex = useMemo(() => Math.floor(editingIndex / perSheet), [editingIndex, perSheet])
-  const activeSheet = sheets[activeSheetIndex] || []
+  const activeSheet = exportSheets[activeSheetIndex] || []
 
   const editingPerson = decoratedAttendees[editingIndex] || null
   const editingPositionLabel = decoratedAttendees.length ? `#${editingIndex + 1} de ${decoratedAttendees.length}` : 'Sin selección'
@@ -792,7 +804,7 @@ function App() {
       await Promise.all([preloadImage(activeTemplate.front), preloadImage(activeTemplate.back)])
       await new Promise((resolve) => setTimeout(resolve, 150))
 
-      const sheetsToExport = Array.from(document.querySelectorAll('.sheet-grid .print-sheet')).filter(
+      const sheetsToExport = Array.from(document.querySelectorAll('.sheet-grid--export .print-sheet')).filter(
         (sheet) => sheet.dataset.hasContent === 'true'
       )
       const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'letter' })
@@ -888,7 +900,7 @@ function App() {
           <p className="lead">
             {isPersonMode
               ? 'Migra la experiencia original de personificadores: ajusta la plantilla carta, sube tu Excel y personaliza el texto con total control.'
-              : 'Usa la plantilla de Gafetes Jornada (2 columnas x 8 filas), carga tu Excel y obtén las 16 credenciales alineadas en una sola hoja.'}
+              : 'Usa la plantilla de Gafetes Jornada (2 columnas x 4 filas), carga tu Excel y obtén las 8 credenciales alineadas en una sola hoja.'}
           </p>
 
           <div className="mode-grid" role="tablist" aria-label="Tipo de gafete">
@@ -919,7 +931,7 @@ function App() {
                 {!isPersonMode && <span className="pill pill--accent">Activo</span>}
               </div>
               <h3>Gafetes Jornada</h3>
-              <p>Replica el flujo con la plantilla de 2 columnas y 8 filas usando Gafetes_jornada.png.</p>
+              <p>Replica el flujo con la plantilla de 2 columnas y 4 filas usando Gafetes_jornada.png.</p>
             </button>
           </div>
         </div>
@@ -1438,12 +1450,42 @@ function App() {
             Ajusta los deslizadores hasta que el texto caiga en el lugar exacto de tu plantilla. Cada hoja acomoda
             {perSheetLabel} listos para imprimir frente y reverso con la misma orientación.
           </p>
+          {totalPeople > PREVIEW_LIMIT && (
+            <p className="helper">
+              Solo se previsualizan las primeras {PREVIEW_LIMIT} personas para mantener la app ágil. La descarga incluye
+              las {totalPeople} personas cargadas.
+            </p>
+          )}
         </div>
         {!attendees.length && <p className="empty">Sube tu Excel o usa el ejemplo para comenzar.</p>}
         {missingCustomTemplate && <p className="empty">Sube ambos lados de la plantilla personalizada para generar la vista previa.</p>}
-        <div className="sheet-grid">
-          {sheets.map((sheet, index) => (
+        <div className="sheet-grid sheet-grid--preview">
+          {previewSheets.map((sheet, index) => (
             <div className="sheet-pair" key={`sheet-${index}`}>
+              <PrintSheet
+                sheet={sheet}
+                variant="front"
+                template={activeTemplate}
+                positionAdjustments={positionAdjustments}
+                fontScale={fontScale}
+                index={index}
+                uniformMetrics={uniformMetrics}
+              />
+              <PrintSheet
+                sheet={sheet}
+                variant="back"
+                template={activeTemplate}
+                positionAdjustments={positionAdjustments}
+                fontScale={fontScale}
+                index={index}
+                uniformMetrics={uniformMetrics}
+              />
+            </div>
+          ))}
+        </div>
+        <div className="sheet-grid sheet-grid--export" aria-hidden>
+          {exportSheets.map((sheet, index) => (
+            <div className="sheet-pair" key={`export-sheet-${index}`}>
               <PrintSheet
                 sheet={sheet}
                 variant="front"
