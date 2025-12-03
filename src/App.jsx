@@ -427,7 +427,12 @@ function PrintSheet({
     gridTemplateRows: `repeat(${rows}, 1fr)`,
     ...(template?.grid?.gap && !useSheetTemplate ? { gap: template.grid.gap } : {}),
     ...(isJornadaTemplate
-      ? { alignContent: 'center', justifyItems: 'center', padding: '20mm 14mm', rowGap: template?.grid?.gap || '6mm' }
+      ? {
+          alignContent: 'center',
+          justifyItems: 'center',
+          padding: '26mm 14mm 14mm',
+          rowGap: template?.grid?.gap || '6mm',
+        }
       : {}),
     ...(useSheetTemplate && sheetBackgroundImage ? { backgroundImage: sheetBackgroundImage } : {}),
   }
@@ -445,7 +450,9 @@ function PrintSheet({
       </p>
       {slots.map((group, slotIndex) => {
         const rowIndex = Math.floor(slotIndex / columns)
-        const rowOffset = isJornadaTemplate ? (rowIndex === 0 ? 7.5 : rowIndex === rows - 1 ? -7.5 : 0) : 0
+        const topRowOffset = 11.5
+        const bottomRowOffset = -2.5
+        const rowOffset = isJornadaTemplate ? (rowIndex === 0 ? topRowOffset : rowIndex === rows - 1 ? bottomRowOffset : 0) : 0
 
         return (
           <div className="print-slot" key={`${variant}-${index}-${slotIndex}`}>
@@ -499,6 +506,7 @@ function App() {
   const [editingManualIndex, setEditingManualIndex] = useState(null)
   const [listName, setListName] = useState('')
   const [savedLists, setSavedLists] = useState([])
+  const [isListCollapsed, setIsListCollapsed] = useState(true)
 
   const templateOptions = TEMPLATE_OPTIONS[activeMode] || []
   const templateId = templateSelection[activeMode] || templateOptions[0]?.id || ''
@@ -521,6 +529,7 @@ function App() {
 
   const perSheet = activeTemplate?.perSheet || 4
   const isPersonMode = activeMode === MODES.PERSONIFICADORES
+  const isJornadaMode = activeMode === MODES.JORNADA
   const perSheetLabel = `${perSheet} gafetes por hoja`
 
   useEffect(
@@ -1090,8 +1099,20 @@ function App() {
         </div>
 
         {attendees.length > 0 && (
-          <div className="people-table" role="list">
-            {attendees.map((person, index) => (
+          <div className="people-table people-table--collapsible" role="list">
+            <div className="people-table__header">
+              <div>
+                <p className="block__title">Lista numerada</p>
+                <p className="helper">
+                  {isListCollapsed ? 'Mostrando los primeros 10' : 'Mostrando todos los nombres cargados'} · Total: {attendees.length}
+                </p>
+              </div>
+              <button type="button" className="ghost" onClick={() => setIsListCollapsed((prev) => !prev)}>
+                {isListCollapsed ? 'Desplegar lista completa' : 'Contraer a top 10'}
+              </button>
+            </div>
+
+            {(isListCollapsed ? attendees.slice(0, 10) : attendees).map((person, index) => (
               <div className="people-row" key={`${person.fullName}-${index}`} role="listitem">
                 <div>
                   <p className="people-row__name">#{index + 1} · {person.fullName || 'Sin nombre'}</p>
@@ -1107,6 +1128,10 @@ function App() {
                 </div>
               </div>
             ))}
+
+            {isListCollapsed && attendees.length > 10 && (
+              <p className="helper people-table__overflow">Despliega para editar o eliminar el resto de la lista.</p>
+            )}
           </div>
         )}
       </section>
@@ -1161,18 +1186,20 @@ function App() {
               />
               <span className="control__value">{Math.round(fontScale.front * 100)}%</span>
             </label>
-            <label className="control">
-              <span>Hoja 2 / Reverso</span>
-              <input
-                type="range"
-                min="0.6"
-                max="1.6"
-                step="0.05"
-                value={fontScale.back}
-                onChange={(event) => updateFontScale('back', Number(event.target.value))}
-              />
-              <span className="control__value">{Math.round(fontScale.back * 100)}%</span>
-            </label>
+            {!isJornadaMode && (
+              <label className="control">
+                <span>Hoja 2 / Reverso</span>
+                <input
+                  type="range"
+                  min="0.6"
+                  max="1.6"
+                  step="0.05"
+                  value={fontScale.back}
+                  onChange={(event) => updateFontScale('back', Number(event.target.value))}
+                />
+                <span className="control__value">{Math.round(fontScale.back * 100)}%</span>
+              </label>
+            )}
           </div>
           <label className="control control--inline control--toggle">
             <input
@@ -1247,9 +1274,10 @@ function App() {
           <div>
             <p className="panel__title">Edición individual</p>
             <p className="helper">
-              Ajusta un nombre o empresa de manera puntual y controla el tamaño de letra de cada hoja (frente y reverso)
-              sin afectar a los demás. Recorre la lista, aplica cambios rápidos y valida en la vista previa inmediata de
-              cada lado.
+              Ajusta un nombre o empresa de manera puntual y controla el tamaño de letra
+              {isJornadaMode ? ' del frente' : ' de cada hoja (frente y reverso)'} sin afectar a los demás. Recorre la
+              lista, aplica cambios rápidos y valida en la vista previa inmediata {isJornadaMode ? 'del lado frontal' :
+                'de cada lado'}.
             </p>
           </div>
           <div className="controls controls--inline">
@@ -1401,19 +1429,21 @@ function App() {
                   <span className="control__value">{Math.round((attendeeOverrides[editingIndex]?.fontScaleFront ?? 1) * 100)}%</span>
                   <span className="control__hint">Usa esto cuando el nombre en el frente necesite más aire.</span>
                 </label>
-                <label className="control">
-                  <span>Tamaño solo para hoja 2 (reverso)</span>
-                  <input
-                    type="range"
-                    min="0.6"
-                    max="1.6"
-                    step="0.05"
-                    value={attendeeOverrides[editingIndex]?.fontScaleBack ?? 1}
-                    onChange={(event) => updateAttendeeOverride(editingIndex, 'fontScaleBack', Number(event.target.value))}
-                  />
-                  <span className="control__value">{Math.round((attendeeOverrides[editingIndex]?.fontScaleBack ?? 1) * 100)}%</span>
-                  <span className="control__hint">Ajusta aquí si la cara posterior se ve más cargada.</span>
-                </label>
+                {!isJornadaMode && (
+                  <label className="control">
+                    <span>Tamaño solo para hoja 2 (reverso)</span>
+                    <input
+                      type="range"
+                      min="0.6"
+                      max="1.6"
+                      step="0.05"
+                      value={attendeeOverrides[editingIndex]?.fontScaleBack ?? 1}
+                      onChange={(event) => updateAttendeeOverride(editingIndex, 'fontScaleBack', Number(event.target.value))}
+                    />
+                    <span className="control__value">{Math.round((attendeeOverrides[editingIndex]?.fontScaleBack ?? 1) * 100)}%</span>
+                    <span className="control__hint">Ajusta aquí si la cara posterior se ve más cargada.</span>
+                  </label>
+                )}
               </div>
             </div>
 
@@ -1424,8 +1454,10 @@ function App() {
                     </p>
                     <div className="pill pill--neutral">{perSheetLabel}</div>
                   </div>
-                  <p className="helper">Observa cómo se verá cada lado sin salir de la edición individual.</p>
-              <div className="badge-pair badge-pair--compact">
+                  <p className="helper">
+                    Observa cómo se verá {isJornadaMode ? 'el frente en tiempo real' : 'cada lado sin salir de la edición individual'}.
+                  </p>
+              <div className={`badge-pair badge-pair--compact ${isJornadaMode ? 'badge-pair--single' : ''}`}>
                 <div className="badge-preview">
                   <p className="badge-preview__label">Hoja activa · Frente</p>
                   <PrintSheet
@@ -1438,18 +1470,20 @@ function App() {
                     uniformMetrics={uniformMetrics}
                   />
                 </div>
-                <div className="badge-preview">
-                  <p className="badge-preview__label">Hoja activa · Reverso</p>
-                  <PrintSheet
-                    sheet={activeSheet}
-                    variant="back"
-                    template={activeTemplate}
-                    positionAdjustments={positionAdjustments}
-                    fontScale={fontScale}
-                    index={activeSheetIndex}
-                    uniformMetrics={uniformMetrics}
-                  />
-                </div>
+                {!isJornadaMode && (
+                  <div className="badge-preview">
+                    <p className="badge-preview__label">Hoja activa · Reverso</p>
+                    <PrintSheet
+                      sheet={activeSheet}
+                      variant="back"
+                      template={activeTemplate}
+                      positionAdjustments={positionAdjustments}
+                      fontScale={fontScale}
+                      index={activeSheetIndex}
+                      uniformMetrics={uniformMetrics}
+                    />
+                  </div>
+                )}
               </div>
             </div>
           </>
@@ -1480,14 +1514,15 @@ function App() {
           <h2>Vista previa</h2>
           <p>
             Ajusta los deslizadores hasta que el texto caiga en el lugar exacto de tu plantilla. Cada hoja acomoda
-            {perSheetLabel} listos para imprimir frente y reverso con la misma orientación.
+            {perSheetLabel} listos para imprimir {isJornadaMode ? 'solo el frente' : 'frente y reverso'} con la misma
+            orientación.
           </p>
         </div>
         {!attendees.length && <p className="empty">Sube tu Excel o usa el ejemplo para comenzar.</p>}
         {missingCustomTemplate && <p className="empty">Sube ambos lados de la plantilla personalizada para generar la vista previa.</p>}
         <div className="sheet-grid sheet-grid--preview">
           {previewSheets.map((sheet, index) => (
-            <div className="sheet-pair" key={`sheet-${index}`}>
+            <div className={`sheet-pair ${isJornadaMode ? 'sheet-pair--single' : ''}`} key={`sheet-${index}`}>
               <PrintSheet
                 sheet={sheet}
                 variant="front"
@@ -1497,21 +1532,23 @@ function App() {
                 index={index}
                 uniformMetrics={uniformMetrics}
               />
-              <PrintSheet
-                sheet={sheet}
-                variant="back"
-                template={activeTemplate}
-                positionAdjustments={positionAdjustments}
-                fontScale={fontScale}
-                index={index}
-                uniformMetrics={uniformMetrics}
-              />
+              {!isJornadaMode && (
+                <PrintSheet
+                  sheet={sheet}
+                  variant="back"
+                  template={activeTemplate}
+                  positionAdjustments={positionAdjustments}
+                  fontScale={fontScale}
+                  index={index}
+                  uniformMetrics={uniformMetrics}
+                />
+              )}
             </div>
           ))}
         </div>
         <div className="sheet-grid sheet-grid--export" aria-hidden>
           {exportSheets.map((sheet, index) => (
-            <div className="sheet-pair" key={`export-sheet-${index}`}>
+            <div className={`sheet-pair ${isJornadaMode ? 'sheet-pair--single' : ''}`} key={`export-sheet-${index}`}>
               <PrintSheet
                 sheet={sheet}
                 variant="front"
@@ -1521,15 +1558,17 @@ function App() {
                 index={index}
                 uniformMetrics={uniformMetrics}
               />
-              <PrintSheet
-                sheet={sheet}
-                variant="back"
-                template={activeTemplate}
-                positionAdjustments={positionAdjustments}
-                fontScale={fontScale}
-                index={index}
-                uniformMetrics={uniformMetrics}
-              />
+              {!isJornadaMode && (
+                <PrintSheet
+                  sheet={sheet}
+                  variant="back"
+                  template={activeTemplate}
+                  positionAdjustments={positionAdjustments}
+                  fontScale={fontScale}
+                  index={index}
+                  uniformMetrics={uniformMetrics}
+                />
+              )}
             </div>
           ))}
         </div>

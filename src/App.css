@@ -284,6 +284,20 @@ button.ghost.danger {
   overflow: hidden;
 }
 
+.people-table--collapsible .people-table__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--border);
+  background: #f9fafb;
+}
+
+.people-table__overflow {
+  margin: 0;
+  padding: 0.5rem 1rem 1rem;
+}
+
 .people-row {
   display: flex;
   justify-content: space-between;
@@ -659,6 +673,10 @@ button.ghost.danger {
   page-break-inside: avoid;
 }
 
+.sheet-pair--single {
+  grid-template-columns: 1fr;
+}
+
 .print-sheet {
   --sheet-width: 215.9mm;
   --sheet-height: 279.4mm;
@@ -758,6 +776,10 @@ button.ghost.danger {
   margin: 0 auto;
   justify-items: center;
   align-items: start;
+}
+
+.badge-pair--single {
+  width: min(560px, 100%);
 }
 
 .badge-preview {
