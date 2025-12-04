@@ -526,7 +526,6 @@ function App() {
   const [listName, setListName] = useState('')
   const [savedLists, setSavedLists] = useState([])
   const [isListCollapsed, setIsListCollapsed] = useState(true)
-  const [sortJornadaAlphabetically, setSortJornadaAlphabetically] = useState(false)
 
   const templateOptions = TEMPLATE_OPTIONS[activeMode] || []
   const templateId = templateSelection[activeMode] || templateOptions[0]?.id || ''
@@ -785,58 +784,44 @@ function App() {
     setFontScale((prev) => ({ ...prev, [side]: value }))
   }
 
-  const missingCustomTemplate = useMemo(
-    () =>
-      activeTemplate?.id === CUSTOM_TEMPLATE_IDS[activeMode] && (!activeTemplate?.front || !activeTemplate?.back),
-    [activeMode, activeTemplate]
-  )
-
-  const decoratedAttendees = useMemo(() => {
-    const base = attendees.map((attendee, index) => {
-      const overrides = attendeeOverrides[index] || {}
-      const fullName = overrides.name ?? attendee.fullName
-      const company = overrides.company ?? attendee.company
-      const sortLabel = normalizeValue(fullName) || normalizeValue(company) || `Persona ${index + 1}`
-
-      return {
-        ...attendee,
-        fullName,
-        company,
-        fontScaleFront: overrides.fontScaleFront ?? 1,
-        fontScaleBack: overrides.fontScaleBack ?? 1,
-        originalIndex: index,
-        sortLabel,
-      }
-    })
-
-    if (isJornadaMode && sortJornadaAlphabetically) {
-      return [...base].sort((a, b) => a.sortLabel.localeCompare(b.sortLabel, 'es', { sensitivity: 'base' }))
-    }
-
-    return base
-  }, [attendeeOverrides, attendees, isJornadaMode, sortJornadaAlphabetically])
-
-  const resolveOriginalIndex = (index) => decoratedAttendees[index]?.originalIndex ?? index
-
   const updateAttendeeOverride = (index, field, value) => {
-    const targetIndex = resolveOriginalIndex(index)
     const normalizedValue = ['name', 'company'].includes(field) ? toTitleCase(value) : value
     setAttendeeOverrides((prev) => ({
       ...prev,
-      [targetIndex]: {
-        ...(prev[targetIndex] || {}),
+      [index]: {
+        ...(prev[index] || {}),
         [field]: normalizedValue,
       },
     }))
   }
 
   const resetAttendeeOverride = (index) => {
-    const targetIndex = resolveOriginalIndex(index)
     setAttendeeOverrides((prev) => {
-      const { [targetIndex]: removed, ...rest } = prev
+      const { [index]: removed, ...rest } = prev
       return rest
     })
   }
+
+  const missingCustomTemplate = useMemo(
+    () =>
+      activeTemplate?.id === CUSTOM_TEMPLATE_IDS[activeMode] && (!activeTemplate?.front || !activeTemplate?.back),
+    [activeMode, activeTemplate]
+  )
+
+  const decoratedAttendees = useMemo(
+    () =>
+      attendees.map((attendee, index) => {
+        const overrides = attendeeOverrides[index] || {}
+        return {
+          ...attendee,
+          fullName: overrides.name ?? attendee.fullName,
+          company: overrides.company ?? attendee.company,
+          fontScaleFront: overrides.fontScaleFront ?? 1,
+          fontScaleBack: overrides.fontScaleBack ?? 1,
+        }
+      }),
+    [attendeeOverrides, attendees]
+  )
 
   const suggestionCatalog = useMemo(
     () =>
@@ -845,25 +830,6 @@ function App() {
         label: `${person.fullName || `Persona ${index + 1}`} · ${person.company || 'Sin empresa'}`,
       })),
     [decoratedAttendees]
-  )
-
-  useEffect(() => {
-    if (!decoratedAttendees.length) {
-      setEditingIndex(0)
-      return
-    }
-
-    const activeOriginalIndex = resolveOriginalIndex(editingIndex)
-    const nextIndex = decoratedAttendees.findIndex((person) => person.originalIndex === activeOriginalIndex)
-
-    if (nextIndex >= 0 && nextIndex !== editingIndex) {
-      setEditingIndex(nextIndex)
-    }
-  }, [decoratedAttendees, editingIndex])
-
-  const visibleAttendees = useMemo(
-    () => (isListCollapsed ? decoratedAttendees.slice(0, 10) : decoratedAttendees),
-    [decoratedAttendees, isListCollapsed]
   )
 
   const savedListsForMode = useMemo(
@@ -1165,51 +1131,38 @@ function App() {
           </div>
         </div>
 
-        {decoratedAttendees.length > 0 && (
+        {attendees.length > 0 && (
           <div className="people-table people-table--collapsible" role="list">
             <div className="people-table__header">
               <div>
                 <p className="block__title">Lista numerada</p>
                 <p className="helper">
-                  {isListCollapsed ? 'Mostrando los primeros 10' : 'Mostrando todos los nombres cargados'} · Total:{' '}
-                  {decoratedAttendees.length}
+                  {isListCollapsed ? 'Mostrando los primeros 10' : 'Mostrando todos los nombres cargados'} · Total: {attendees.length}
                 </p>
               </div>
-              <div className="inline-actions">
-                {isJornadaMode && (
-                  <label className="control control--toggle">
-                    <input
-                      type="checkbox"
-                      checked={sortJornadaAlphabetically}
-                      onChange={(event) => setSortJornadaAlphabetically(event.target.checked)}
-                    />
-                    <span>Ordenar alfabéticamente (Gafetes Jornada)</span>
-                  </label>
-                )}
-                <button type="button" className="ghost" onClick={() => setIsListCollapsed((prev) => !prev)}>
-                  {isListCollapsed ? 'Desplegar lista completa' : 'Contraer a top 10'}
-                </button>
-              </div>
+              <button type="button" className="ghost" onClick={() => setIsListCollapsed((prev) => !prev)}>
+                {isListCollapsed ? 'Desplegar lista completa' : 'Contraer a top 10'}
+              </button>
             </div>
 
-            {visibleAttendees.map((person, index) => (
-              <div className="people-row" key={`${person.fullName}-${person.originalIndex}-${index}`} role="listitem">
+            {(isListCollapsed ? attendees.slice(0, 10) : attendees).map((person, index) => (
+              <div className="people-row" key={`${person.fullName}-${index}`} role="listitem">
                 <div>
                   <p className="people-row__name">#{index + 1} · {person.fullName || 'Sin nombre'}</p>
                   <p className="people-row__meta">{person.company || 'Sin empresa'} · Apellido base: {person.lastName || 'N/A'}</p>
                 </div>
                 <div className="inline-actions">
-                  <button type="button" className="ghost" onClick={() => handleStartManualEdit(person.originalIndex)}>
+                  <button type="button" className="ghost" onClick={() => handleStartManualEdit(index)}>
                     Editar
                   </button>
-                  <button type="button" className="ghost danger" onClick={() => handleRemovePerson(person.originalIndex)}>
+                  <button type="button" className="ghost danger" onClick={() => handleRemovePerson(index)}>
                     Eliminar
                   </button>
                 </div>
               </div>
             ))}
 
-            {isListCollapsed && decoratedAttendees.length > 10 && (
+            {isListCollapsed && attendees.length > 10 && (
               <p className="helper people-table__overflow">Despliega para editar o eliminar el resto de la lista.</p>
             )}
           </div>
