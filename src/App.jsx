@@ -521,6 +521,7 @@ function App() {
   const [highlightedSuggestion, setHighlightedSuggestion] = useState(null)
   const [isPrinting, setIsPrinting] = useState(false)
   const [useUniformScaling, setUseUniformScaling] = useState(false)
+  const [sortJornadaByLastName, setSortJornadaByLastName] = useState(false)
   const [manualForm, setManualForm] = useState({ company: '', firstName: '', lastName: '' })
   const [editingManualIndex, setEditingManualIndex] = useState(null)
   const [listName, setListName] = useState('')
@@ -823,13 +824,27 @@ function App() {
     [attendeeOverrides, attendees]
   )
 
+  const visibleAttendees = useMemo(() => {
+    const withOriginalIndex = decoratedAttendees.map((person, index) => ({ ...person, originalIndex: index }))
+    if (!isJornadaMode || !sortJornadaByLastName) return withOriginalIndex
+
+    return withOriginalIndex.slice().sort((personA, personB) => {
+      const lastNameA = personA.lastName || ''
+      const lastNameB = personB.lastName || ''
+      const nameCompare = lastNameA.localeCompare(lastNameB, 'es', { sensitivity: 'base' })
+      if (nameCompare !== 0) return nameCompare
+      return (personA.fullName || '').localeCompare(personB.fullName || '', 'es', { sensitivity: 'base' })
+    })
+  }, [decoratedAttendees, isJornadaMode, sortJornadaByLastName])
+
   const suggestionCatalog = useMemo(
     () =>
-      decoratedAttendees.map((person, index) => ({
-        index,
+      visibleAttendees.map((person, index) => ({
+        index: person.originalIndex,
+        position: index,
         label: `${person.fullName || `Persona ${index + 1}`} · ${person.company || 'Sin empresa'}`,
       })),
-    [decoratedAttendees]
+    [visibleAttendees]
   )
 
   const savedListsForMode = useMemo(
@@ -845,22 +860,36 @@ function App() {
       .slice(0, 8)
   }, [quickSearch, suggestionCatalog])
 
-  const badgeGroups = useMemo(() => decoratedAttendees.map((attendee) => [attendee]), [decoratedAttendees])
+  const badgeGroups = useMemo(
+    () => visibleAttendees.map(({ originalIndex, ...attendee }) => [attendee]),
+    [visibleAttendees]
+  )
 
   const exportSheets = useMemo(() => chunkIntoSheets(badgeGroups, perSheet), [badgeGroups, perSheet])
   const previewSheets = exportSheets
   const totalSheets = useMemo(() => exportSheets.length, [exportSheets])
-  const totalPeople = useMemo(() => decoratedAttendees.length, [decoratedAttendees])
-  const activeSheetIndex = useMemo(() => Math.floor(editingIndex / perSheet), [editingIndex, perSheet])
+  const totalPeople = useMemo(() => visibleAttendees.length, [visibleAttendees])
+  const editingOrderPosition = useMemo(
+    () => visibleAttendees.findIndex((person) => person.originalIndex === editingIndex),
+    [editingIndex, visibleAttendees]
+  )
+  const activeSheetIndex = useMemo(
+    () => Math.floor(((editingOrderPosition >= 0 ? editingOrderPosition : 0) || 0) / perSheet),
+    [editingOrderPosition, perSheet]
+  )
   const activeSheet = exportSheets[activeSheetIndex] || []
 
-  const editingPerson = decoratedAttendees[editingIndex] || null
-  const editingPositionLabel = decoratedAttendees.length ? `#${editingIndex + 1} de ${decoratedAttendees.length}` : 'Sin selección'
-  const isPersonCustomized = Boolean(attendeeOverrides[editingIndex])
+  const editingPerson =
+    (editingOrderPosition >= 0 ? visibleAttendees[editingOrderPosition] : visibleAttendees[0]) || null
+  const editingOriginalIndex = editingPerson?.originalIndex ?? 0
+  const editingPositionLabel = visibleAttendees.length
+    ? `#${(editingOrderPosition >= 0 ? editingOrderPosition : 0) + 1} de ${visibleAttendees.length}`
+    : 'Sin selección'
+  const isPersonCustomized = Boolean(attendeeOverrides[editingOriginalIndex])
 
   const activeBadgeGroup = useMemo(
-    () => (decoratedAttendees.length ? [decoratedAttendees[editingIndex] || decoratedAttendees[0]] : []),
-    [decoratedAttendees, editingIndex]
+    () => (decoratedAttendees.length ? [decoratedAttendees[editingOriginalIndex] || decoratedAttendees[0]] : []),
+    [decoratedAttendees, editingOriginalIndex]
   )
 
   const uniformMetrics = useMemo(
@@ -938,22 +967,15 @@ function App() {
     if (!value.trim()) return
 
     const normalized = value.toLowerCase()
-    const exactIndex = decoratedAttendees.findIndex((person, index) => {
-      const label = `${person.fullName || `Persona ${index + 1}`} · ${person.company || 'Sin empresa'}`
-      return label.toLowerCase() === normalized
-    })
-    if (exactIndex >= 0) {
-      setEditingIndex(exactIndex)
+    const exactMatch = suggestionCatalog.find((item) => item.label.toLowerCase() === normalized)
+    if (exactMatch) {
+      setEditingIndex(exactMatch.index)
       return
     }
 
-    const fuzzyIndex = decoratedAttendees.findIndex(
-      (person) =>
-        (person.fullName || '').toLowerCase().includes(normalized) ||
-        (person.company || '').toLowerCase().includes(normalized)
-    )
-    if (fuzzyIndex >= 0) {
-      setEditingIndex(fuzzyIndex)
+    const fuzzyMatch = suggestionCatalog.find((item) => item.label.toLowerCase().includes(normalized))
+    if (fuzzyMatch) {
+      setEditingIndex(fuzzyMatch.index)
     }
   }
 
@@ -1131,38 +1153,50 @@ function App() {
           </div>
         </div>
 
-        {attendees.length > 0 && (
+        {visibleAttendees.length > 0 && (
           <div className="people-table people-table--collapsible" role="list">
             <div className="people-table__header">
               <div>
                 <p className="block__title">Lista numerada</p>
                 <p className="helper">
-                  {isListCollapsed ? 'Mostrando los primeros 10' : 'Mostrando todos los nombres cargados'} · Total: {attendees.length}
+                  {isListCollapsed ? 'Mostrando los primeros 10' : 'Mostrando todos los nombres cargados'} · Total: {visibleAttendees.length}
                 </p>
               </div>
-              <button type="button" className="ghost" onClick={() => setIsListCollapsed((prev) => !prev)}>
-                {isListCollapsed ? 'Desplegar lista completa' : 'Contraer a top 10'}
-              </button>
+              <div className="inline-actions">
+                {isJornadaMode && (
+                  <label className="control control--inline control--toggle">
+                    <input
+                      type="checkbox"
+                      checked={sortJornadaByLastName}
+                      onChange={(event) => setSortJornadaByLastName(event.target.checked)}
+                    />
+                    <span>Ordenar por apellido (A → Z)</span>
+                  </label>
+                )}
+                <button type="button" className="ghost" onClick={() => setIsListCollapsed((prev) => !prev)}>
+                  {isListCollapsed ? 'Desplegar lista completa' : 'Contraer a top 10'}
+                </button>
+              </div>
             </div>
 
-            {(isListCollapsed ? attendees.slice(0, 10) : attendees).map((person, index) => (
-              <div className="people-row" key={`${person.fullName}-${index}`} role="listitem">
+            {(isListCollapsed ? visibleAttendees.slice(0, 10) : visibleAttendees).map((person, index) => (
+              <div className="people-row" key={`${person.fullName}-${person.originalIndex}`} role="listitem">
                 <div>
                   <p className="people-row__name">#{index + 1} · {person.fullName || 'Sin nombre'}</p>
                   <p className="people-row__meta">{person.company || 'Sin empresa'} · Apellido base: {person.lastName || 'N/A'}</p>
                 </div>
                 <div className="inline-actions">
-                  <button type="button" className="ghost" onClick={() => handleStartManualEdit(index)}>
+                  <button type="button" className="ghost" onClick={() => handleStartManualEdit(person.originalIndex)}>
                     Editar
                   </button>
-                  <button type="button" className="ghost danger" onClick={() => handleRemovePerson(index)}>
+                  <button type="button" className="ghost danger" onClick={() => handleRemovePerson(person.originalIndex)}>
                     Eliminar
                   </button>
                 </div>
               </div>
             ))}
 
-            {isListCollapsed && attendees.length > 10 && (
+            {isListCollapsed && visibleAttendees.length > 10 && (
               <p className="helper people-table__overflow">Despliega para editar o eliminar el resto de la lista.</p>
             )}
           </div>
@@ -1388,13 +1422,13 @@ function App() {
             <label className="control">
               <span>Selecciona una persona</span>
               <select
-                value={decoratedAttendees.length ? editingIndex : ''}
+                value={visibleAttendees.length ? editingIndex : ''}
                 onChange={(event) => setEditingIndex(Number(event.target.value))}
-                disabled={!decoratedAttendees.length}
+                disabled={!visibleAttendees.length}
               >
-                {!decoratedAttendees.length && <option value="">Sube tu Excel para editar</option>}
-                {decoratedAttendees.map((person, index) => (
-                  <option key={`${person.fullName}-${index}`} value={index}>
+                {!visibleAttendees.length && <option value="">Sube tu Excel para editar</option>}
+                {visibleAttendees.map((person, index) => (
+                  <option key={`${person.fullName}-${person.originalIndex}`} value={person.originalIndex}>
                     {person.fullName || `Persona ${index + 1}`}
                   </option>
                 ))}
@@ -1408,7 +1442,7 @@ function App() {
                 value={quickSearch}
                 onChange={(event) => handleQuickSelect(event.target.value)}
                 placeholder="Escribe un nombre o empresa"
-                disabled={!decoratedAttendees.length}
+                disabled={!visibleAttendees.length}
               />
               <datalist id="people-suggestions">
                 {filteredSuggestions.map((item) => (
@@ -1426,61 +1460,63 @@ function App() {
                       onClick={() => handleSuggestionPick(item.index, item.label)}
                     >
                       <span className="suggestion__name">{item.label}</span>
-                      <span className="pill pill--mini">Ir a #{item.index + 1}</span>
+                      <span className="pill pill--mini">Ir a #{item.position + 1}</span>
                     </button>
                   ))}
                 </div>
               )}
             </label>
-            <div className="inline-actions">
+              <div className="inline-actions">
+                <button
+                  type="button"
+                  className="ghost"
+                  disabled={!visibleAttendees.length}
+                  onClick={() => {
+                    if (!visibleAttendees.length) return
+                    const orderPosition = editingOrderPosition >= 0 ? editingOrderPosition : 0
+                    const prevPosition = (orderPosition - 1 + visibleAttendees.length) % visibleAttendees.length
+                    setEditingIndex(visibleAttendees[prevPosition].originalIndex)
+                  }}
+                >
+                  ← Anterior
+                </button>
+                <button
+                  type="button"
+                  className="ghost"
+                  disabled={!visibleAttendees.length}
+                  onClick={() => {
+                    if (!visibleAttendees.length) return
+                    const orderPosition = editingOrderPosition >= 0 ? editingOrderPosition : 0
+                    const nextPosition = (orderPosition + 1) % visibleAttendees.length
+                    setEditingIndex(visibleAttendees[nextPosition].originalIndex)
+                  }}
+                >
+                  Siguiente →
+                </button>
+              </div>
               <button
                 type="button"
                 className="ghost"
-                disabled={!decoratedAttendees.length}
-                onClick={() =>
-                  setEditingIndex((prev) =>
-                    decoratedAttendees.length ? (prev - 1 + decoratedAttendees.length) % decoratedAttendees.length : prev
-                  )
-                }
+                disabled={!visibleAttendees.length}
+                onClick={() => resetAttendeeOverride(editingOriginalIndex)}
               >
-                ← Anterior
-              </button>
-              <button
-                type="button"
-                className="ghost"
-                disabled={!decoratedAttendees.length}
-                onClick={() =>
-                  setEditingIndex((prev) =>
-                    decoratedAttendees.length ? (prev + 1) % decoratedAttendees.length : prev
-                  )
-                }
-              >
-                Siguiente →
+                Restablecer persona
               </button>
             </div>
-            <button
-              type="button"
-              className="ghost"
-              disabled={!decoratedAttendees.length}
-              onClick={() => resetAttendeeOverride(editingIndex)}
-            >
-              Restablecer persona
-            </button>
-          </div>
         </div>
 
-        {decoratedAttendees.length > 0 ? (
+        {visibleAttendees.length > 0 ? (
           <>
             <div className="person-rail" role="list">
-              {decoratedAttendees.map((person, index) => {
-                const isActive = index === editingIndex
-                const hasChanges = Boolean(attendeeOverrides[index])
+              {visibleAttendees.map((person, index) => {
+                const isActive = person.originalIndex === editingIndex
+                const hasChanges = Boolean(attendeeOverrides[person.originalIndex])
                 return (
                   <button
                     type="button"
-                    key={`${person.fullName}-${index}`}
+                    key={`${person.fullName}-${person.originalIndex}`}
                     className={`person-chip ${isActive ? 'person-chip--active' : ''} ${hasChanges ? 'person-chip--dirty' : ''}`}
-                    onClick={() => setEditingIndex(index)}
+                    onClick={() => setEditingIndex(person.originalIndex)}
                     aria-current={isActive}
                     role="listitem"
                   >
@@ -1504,8 +1540,8 @@ function App() {
                   <span>Nombre a mostrar</span>
                   <input
                     type="text"
-                    value={attendeeOverrides[editingIndex]?.name ?? attendees[editingIndex]?.fullName ?? ''}
-                    onChange={(event) => updateAttendeeOverride(editingIndex, 'name', event.target.value)}
+                    value={attendeeOverrides[editingOriginalIndex]?.name ?? attendees[editingOriginalIndex]?.fullName ?? ''}
+                    onChange={(event) => updateAttendeeOverride(editingOriginalIndex, 'name', event.target.value)}
                     placeholder="Nombre y apellidos"
                   />
                   <span className="control__hint">Ideal para corregir tildes o apellidos compuestos.</span>
@@ -1514,8 +1550,8 @@ function App() {
                   <span>Empresa a mostrar</span>
                   <input
                     type="text"
-                    value={attendeeOverrides[editingIndex]?.company ?? attendees[editingIndex]?.company ?? ''}
-                    onChange={(event) => updateAttendeeOverride(editingIndex, 'company', event.target.value)}
+                    value={attendeeOverrides[editingOriginalIndex]?.company ?? attendees[editingOriginalIndex]?.company ?? ''}
+                    onChange={(event) => updateAttendeeOverride(editingOriginalIndex, 'company', event.target.value)}
                     placeholder="Nombre de la empresa"
                   />
                   <span className="control__hint">Se adapta automáticamente a textos largos.</span>
@@ -1527,10 +1563,10 @@ function App() {
                     min="0.6"
                     max="1.6"
                     step="0.05"
-                    value={attendeeOverrides[editingIndex]?.fontScaleFront ?? 1}
-                    onChange={(event) => updateAttendeeOverride(editingIndex, 'fontScaleFront', Number(event.target.value))}
+                    value={attendeeOverrides[editingOriginalIndex]?.fontScaleFront ?? 1}
+                    onChange={(event) => updateAttendeeOverride(editingOriginalIndex, 'fontScaleFront', Number(event.target.value))}
                   />
-                  <span className="control__value">{Math.round((attendeeOverrides[editingIndex]?.fontScaleFront ?? 1) * 100)}%</span>
+                  <span className="control__value">{Math.round((attendeeOverrides[editingOriginalIndex]?.fontScaleFront ?? 1) * 100)}%</span>
                   <span className="control__hint">Usa esto cuando el nombre en el frente necesite más aire.</span>
                 </label>
                 {!isJornadaMode && (
@@ -1541,10 +1577,10 @@ function App() {
                       min="0.6"
                       max="1.6"
                       step="0.05"
-                      value={attendeeOverrides[editingIndex]?.fontScaleBack ?? 1}
-                      onChange={(event) => updateAttendeeOverride(editingIndex, 'fontScaleBack', Number(event.target.value))}
+                      value={attendeeOverrides[editingOriginalIndex]?.fontScaleBack ?? 1}
+                      onChange={(event) => updateAttendeeOverride(editingOriginalIndex, 'fontScaleBack', Number(event.target.value))}
                     />
-                    <span className="control__value">{Math.round((attendeeOverrides[editingIndex]?.fontScaleBack ?? 1) * 100)}%</span>
+                    <span className="control__value">{Math.round((attendeeOverrides[editingOriginalIndex]?.fontScaleBack ?? 1) * 100)}%</span>
                     <span className="control__hint">Ajusta aquí si la cara posterior se ve más cargada.</span>
                   </label>
                 )}
